@@ -1,0 +1,39 @@
+*.py
+*.bat
+*.txt
+
+# Qt
+*.pro.user
+*.pro.user.*
+*.autosave
+
+# Build directories
+build-*/
+Debug/
+Release/
+*.build/
+*.build-Debug/
+*.build-Release/
+
+# Compiled object files
+*.o
+*.obj
+*.dll
+*.exe
+
+# Qt specific
+moc_*
+qrc_*
+ui_*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE files
+*.~
+*.swp
+*.swo
+
+# Project specific temporary files
+project_dump.txt

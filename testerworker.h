@@ -20,6 +20,7 @@ void run(TestAlgorithm algo); // queued: runs testers in worker thread
 
 signals:
 void progress(int percent);
+void progressDetail(size_t addr, Word expected, Word read);
 void finished(const std::vector<TestResult>& results);
 
 

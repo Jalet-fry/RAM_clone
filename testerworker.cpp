@@ -22,6 +22,7 @@ void TesterWorker::run(TestAlgorithm algo) {
 // This slot runs in the worker thread (because object was moved).
 MemoryTester tester(_mem);
 connect(&tester, &MemoryTester::progress, this, &TesterWorker::progress);
+connect(&tester, &MemoryTester::progressDetail, this, &TesterWorker::progressDetail);
 connect(&tester, &MemoryTester::finished, this, &TesterWorker::finished);
 tester.runTest(algo);
 }

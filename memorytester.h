@@ -35,6 +35,7 @@ void runTest(TestAlgorithm algo);
 
 signals:
 void progress(int percent);
+void progressDetail(size_t addr, Word expected, Word read);
 void finished(const std::vector<TestResult>& results);
 
 

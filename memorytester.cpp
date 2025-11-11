@@ -1,4 +1,3 @@
-
 #include "memorytester.h"
 #include <QThread>
 #include <cmath>
@@ -23,6 +22,7 @@ void MemoryTester::runTest(TestAlgorithm algo) {
             _results.push_back({a, expected, r, pass});
             int percent = int(((a + 1) * 100.0) / n);
             emit progress(percent);
+            emit progressDetail(a, expected, r);
             QThread::msleep(2);
         }
     } else if (algo == TestAlgorithm::WalkingZeros) {
@@ -37,6 +37,7 @@ void MemoryTester::runTest(TestAlgorithm algo) {
             _results.push_back({a, expected, r, pass});
             int percent = int(((a + 1) * 100.0) / n);
             emit progress(percent);
+            emit progressDetail(a, expected, r);
             QThread::msleep(2);
         }
     } else if (algo == TestAlgorithm::MarchSimple) {
@@ -46,9 +47,10 @@ void MemoryTester::runTest(TestAlgorithm algo) {
             Word r = _mem->read(a);
             bool pass = (r == 0u);
             _results.push_back({a, 0u, r, pass});
-            int percent = int(((a + 1) * 50.0) / n / 2.0); // part of overall progress
+            int percent = int(((a + 1) * 50.0) / n);
+            emit progress(percent);
+            emit progressDetail(a, 0u, r);
             QThread::msleep(1);
-            emit progress(int(((a + 1) * 50.0) / n));
         }
         // write 1s
         for (size_t a = 0; a < n; ++a) _mem->write(a, ~0u);
@@ -56,7 +58,9 @@ void MemoryTester::runTest(TestAlgorithm algo) {
             Word r = _mem->read(a);
             bool pass = (r == ~0u);
             _results.push_back({a, ~0u, r, pass});
-            emit progress(50 + int(((a + 1) * 50.0) / n));
+            int percent = 50 + int(((a + 1) * 50.0) / n);
+            emit progress(percent);
+            emit progressDetail(a, ~0u, r);
             QThread::msleep(1);
         }
     }

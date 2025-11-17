@@ -31,14 +31,18 @@ SOURCES += \
     mainwindow.cpp \
     memorymodel.cpp \
     memorytester.cpp \
-    testerworker.cpp
+    testerworker.cpp \
+    thememanager.cpp \
+    tableitemdelegate.cpp
 
 # Header files
 HEADERS += \
     mainwindow.h \
     memorymodel.h \
     memorytester.h \
-    testerworker.h
+    testerworker.h \
+    thememanager.h \
+    tableitemdelegate.h
 
 # UI files
 FORMS += \

@@ -15,9 +15,13 @@ void MemoryTester::runTest(TestAlgorithm algo) {
         for (size_t a = 0; a < n; ++a) {
             Word pattern = (1u << (a % 32));
             _mem->writeDirect(a, pattern); // Гарантированная запись без искажений
-            int percent = int((a * 50.0) / n);
-            emit progress(percent);
-            QThread::msleep(1);
+            // Обновляем прогресс реже для производительности (каждые 10 адресов или в конце)
+            if (a % 10 == 0 || a == n - 1) {
+                int percent = int((a * 50.0) / n);
+                emit progress(percent);
+                // Добавляем небольшую задержку для визуализации (около 3 секунд на весь тест)
+                QThread::msleep(60);
+            }
         }
         
         // Фаза 2: Чтение и проверка (здесь применяются неисправности)
@@ -26,19 +30,29 @@ void MemoryTester::runTest(TestAlgorithm algo) {
             Word r = _mem->read(a);           // То, что прочитали (возможно с неисправностью)
             bool pass = (expected == r);
             _results.push_back({a, expected, r, pass});
-            int percent = 50 + int(((a + 1) * 50.0) / n);
-            emit progress(percent);
-            QThread::msleep(2);
+            // Обновляем прогресс и детали реже для производительности
+            if (a % 10 == 0 || a == n - 1) {
+                int percent = 50 + int(((a + 1) * 50.0) / n);
+                emit progress(percent);
+                emit progressDetail(a, expected, r);
+                // Добавляем небольшую задержку для визуализации
+                QThread::msleep(60);
+            }
         }
+        emit progress(100); // Гарантируем 100% в конце
         
     } else if (algo == TestAlgorithm::WalkingZeros) {
         // Фаза 1: Запись эталонных данных
         for (size_t a = 0; a < n; ++a) {
             Word pattern = ~(1u << (a % 32));
             _mem->writeDirect(a, pattern);
-            int percent = int((a * 50.0) / n);
-            emit progress(percent);
-            QThread::msleep(1);
+            // Обновляем прогресс реже для производительности
+            if (a % 10 == 0 || a == n - 1) {
+                int percent = int((a * 50.0) / n);
+                emit progress(percent);
+                // Добавляем небольшую задержку для визуализации
+                QThread::msleep(60);
+            }
         }
         
         // Фаза 2: Чтение и проверка
@@ -47,10 +61,16 @@ void MemoryTester::runTest(TestAlgorithm algo) {
             Word r = _mem->read(a);
             bool pass = (expected == r);
             _results.push_back({a, expected, r, pass});
-            int percent = 50 + int(((a + 1) * 50.0) / n);
-            emit progress(percent);
-            QThread::msleep(2);
+            // Обновляем прогресс и детали реже для производительности
+            if (a % 10 == 0 || a == n - 1) {
+                int percent = 50 + int(((a + 1) * 50.0) / n);
+                emit progress(percent);
+                emit progressDetail(a, expected, r);
+                // Добавляем небольшую задержку для визуализации
+                QThread::msleep(60);
+            }
         }
+        emit progress(100); // Гарантируем 100% в конце
         
     } else if (algo == TestAlgorithm::MarchSimple) {
         // Марш-тест: запись 0 → чтение 0 → запись 1 → чтение 1
@@ -58,8 +78,11 @@ void MemoryTester::runTest(TestAlgorithm algo) {
         // Шаг 1: Запись всех 0
         for (size_t a = 0; a < n; ++a) {
             _mem->writeDirect(a, 0u);
-            emit progress(int((a * 25.0) / n));
-            QThread::msleep(1);
+            if (a % 10 == 0 || a == n - 1) {
+                emit progress(int((a * 25.0) / n));
+                // Добавляем небольшую задержку для визуализации
+                QThread::msleep(60);
+            }
         }
         
         // Шаг 2: Чтение всех 0 (ожидаем 0)
@@ -67,15 +90,22 @@ void MemoryTester::runTest(TestAlgorithm algo) {
             Word r = _mem->read(a);
             bool pass = (r == 0u);
             _results.push_back({a, 0u, r, pass});
-            emit progress(25 + int(((a + 1) * 25.0) / n));
-            QThread::msleep(1);
+            if (a % 10 == 0 || a == n - 1) {
+                emit progress(25 + int(((a + 1) * 25.0) / n));
+                emit progressDetail(a, 0u, r);
+                // Добавляем небольшую задержку для визуализации
+                QThread::msleep(60);
+            }
         }
         
         // Шаг 3: Запись всех 1
         for (size_t a = 0; a < n; ++a) {
             _mem->writeDirect(a, ~0u);
-            emit progress(50 + int((a * 25.0) / n));
-            QThread::msleep(1);
+            if (a % 10 == 0 || a == n - 1) {
+                emit progress(50 + int((a * 25.0) / n));
+                // Добавляем небольшую задержку для визуализации
+                QThread::msleep(60);
+            }
         }
         
         // Шаг 4: Чтение всех 1 (ожидаем 1)
@@ -83,9 +113,14 @@ void MemoryTester::runTest(TestAlgorithm algo) {
             Word r = _mem->read(a);
             bool pass = (r == ~0u);
             _results.push_back({a, ~0u, r, pass});
-            emit progress(75 + int(((a + 1) * 25.0) / n));
-            QThread::msleep(1);
+            if (a % 10 == 0 || a == n - 1) {
+                emit progress(75 + int(((a + 1) * 25.0) / n));
+                emit progressDetail(a, ~0u, r);
+                // Добавляем небольшую задержку для визуализации
+                QThread::msleep(60);
+            }
         }
+        emit progress(100); // Гарантируем 100% в конце
     }
 
     emit finished(_results);

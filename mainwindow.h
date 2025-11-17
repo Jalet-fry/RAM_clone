@@ -13,8 +13,10 @@
 #include <QLabel>
 #include <QTimer>
 #include <QTime>
+#include <QActionGroup>
 #include "memorymodel.h"
 #include "testerworker.h"
+#include "thememanager.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -36,6 +38,7 @@ private slots:
     void updateStatistics();
     void updateTestInfo();
     void updateProgressDetails(size_t addr, Word expected, Word read);
+    void onThemeChanged();
 
 private:
     void logInfo(const QString& message);
@@ -47,6 +50,8 @@ private:
     QString formatBinary(Word value);
     QString getFaultModelName(FaultModel model);
     QString getAlgorithmDescription(TestAlgorithm algo);
+    void applyTheme(Theme theme);
+    QString getThemeStylesheet(Theme theme);
 
     MemoryModel* _mem;
     TesterWorker* _worker;
@@ -94,6 +99,12 @@ private:
     size_t _currentTestAddr;
     size_t _lastHighlightedAddr;
     bool _testRunning;
+
+    // Theme management
+    Theme _currentTheme;
+    QActionGroup* _themeGroup;
+    QAction* _deusExAction;
+    QAction* _matrixAction;
 };
 
 #endif // MAINWINDOW_H

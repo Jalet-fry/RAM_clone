@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "tableitemdelegate.h"
 #include <QtWidgets>
 #include <QMessageBox>
 #include <QHeaderView>
@@ -82,7 +83,6 @@ MainWindow::MainWindow(QWidget* parent)
 
     _faultInfoLabel = new QLabel("Неисправность не внедрена");
     _faultInfoLabel->setWordWrap(true);
-    _faultInfoLabel->setStyleSheet("padding: 5px; background-color: #f0f0f0; border: 1px solid #ccc;");
     faultLayout->addWidget(_faultInfoLabel);
 
     _faultGroup->setLayout(faultLayout);
@@ -104,7 +104,6 @@ MainWindow::MainWindow(QWidget* parent)
 
     _testInfoLabel = new QLabel("");
     _testInfoLabel->setWordWrap(true);
-    _testInfoLabel->setStyleSheet("padding: 5px; background-color: #e8f4f8; border: 1px solid #ccc;");
     testLayout->addWidget(_testInfoLabel);
 
     QHBoxLayout* testBtnLayout = new QHBoxLayout;
@@ -187,9 +186,11 @@ MainWindow::MainWindow(QWidget* parent)
     _table->verticalHeader()->setVisible(false);
     _table->setSelectionMode(QAbstractItemView::SingleSelection);
     _table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    _table->setAlternatingRowColors(true);
+    _table->setAlternatingRowColors(false); // Отключаем автоматическое чередование, управляем цветами вручную
     _table->setSortingEnabled(false);
     _table->horizontalHeader()->setStretchLastSection(true);
+    // Устанавливаем кастомный делегат для правильной отрисовки красного выделения
+    _table->setItemDelegate(new TableItemDelegate(this));
     memoryLayout->addWidget(_table);
 
     bottomSplitter->addWidget(memoryWidget);
@@ -243,6 +244,24 @@ MainWindow::MainWindow(QWidget* parent)
         QMessageBox::information(this, "Описание алгоритмов", desc);
     });
 
+    // Theme menu
+    QMenu* viewMenu = menuBar->addMenu("Вид");
+    _themeGroup = new QActionGroup(this);
+    _themeGroup->setExclusive(true);
+    
+    _deusExAction = new QAction("Deus Ex", this);
+    _deusExAction->setCheckable(true);
+    _deusExAction->setChecked(true);
+    _themeGroup->addAction(_deusExAction);
+    viewMenu->addAction(_deusExAction);
+    
+    _matrixAction = new QAction("Matrix", this);
+    _matrixAction->setCheckable(true);
+    _themeGroup->addAction(_matrixAction);
+    viewMenu->addAction(_matrixAction);
+    
+    connect(_themeGroup, &QActionGroup::triggered, this, &MainWindow::onThemeChanged);
+
     // Connections
     connect(_injectBtn, &QPushButton::clicked, this, &MainWindow::onInject);
     connect(_resetBtn, &QPushButton::clicked, this, &MainWindow::onReset);
@@ -277,6 +296,11 @@ MainWindow::MainWindow(QWidget* parent)
     updateFaultInfo();
     updateStatistics();
     onAlgorithmChanged(0);
+    
+    // Apply default theme (Deus Ex)
+    _currentTheme = Theme::DeusEx;
+    applyTheme(Theme::DeusEx);
+    
     logInfo("Программа запущена. Готов к работе.");
 }
 
@@ -355,6 +379,10 @@ void MainWindow::onStartTest() {
     _expectedValueLabel->setText("Ожидается: —");
     _readValueLabel->setText("Прочитано: —");
 
+    // ОТКЛЮЧАЕМ обновление таблицы во время теста для производительности
+    // Таблица будет обновлена только в конце теста
+    disconnect(_mem, &MemoryModel::dataChanged, this, &MainWindow::refreshTable);
+
     logInfo(QString("Запуск теста: %1").arg(_algoCombo->currentText()));
     updateTestInfo();
 
@@ -366,6 +394,9 @@ void MainWindow::onTestFinished(const std::vector<TestResult>& results) {
     _startBtn->setEnabled(true);
     _testTimer->stop();
     _lastResults = results;
+
+    // ВКЛЮЧАЕМ обратно обновление таблицы после завершения теста
+    connect(_mem, &MemoryModel::dataChanged, this, &MainWindow::refreshTable);
 
     int fails = 0;
     for (const auto& r : results) if (!r.passed) ++fails;
@@ -392,6 +423,9 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
     Q_UNUSED(begin);
     Q_UNUSED(end);
     
+    // Оптимизация: отключаем обновление виджета во время массовых изменений
+    _table->setUpdatesEnabled(false);
+    
     size_t n = _mem->size();
     _table->setRowCount(int(n));
 
@@ -400,6 +434,21 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
     for (const auto& r : _lastResults) {
         testedAddresses.insert(r.addr);
     }
+
+    // Получаем цвета один раз для всей таблицы (оптимизация)
+    ThemeColors colors = ThemeManager::getColors(_currentTheme);
+
+    // ЛОГИРОВАНИЕ: Подсчитываем количество неисправных адресов
+    std::set<size_t> failedAddressesForLog;
+    for (const auto& r : _lastResults) {
+        if (!r.passed) {
+            failedAddressesForLog.insert(r.addr);
+        }
+    }
+    logInfo(QString("refreshTable: Всего результатов: %1, неисправных адресов: %2")
+            .arg(_lastResults.size()).arg(failedAddressesForLog.size()));
+    logInfo(QString("refreshTable: Цвета для красного выделения - фон: %1, текст: %2")
+            .arg(colors.failedTestBg.name()).arg(colors.failedTestText.name()));
 
     for (size_t i = 0; i < n; ++i) {
         // Address
@@ -410,6 +459,7 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
         }
         addrItem->setText(QString::number(i));
         addrItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        addrItem->setForeground(colors.tableText);
 
         Word v = _mem->read(i);
         bool isFaulty = (f.model != FaultModel::None && i >= f.addr && i < f.addr + f.len);
@@ -423,6 +473,7 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
         }
         hexItem->setText(QString("0x%1").arg(v, 8, 16, QChar('0')).toUpper());
         hexItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        hexItem->setForeground(colors.tableText);
 
         // Binary
         QTableWidgetItem* binItem = _table->item(int(i), 2);
@@ -433,6 +484,7 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
         binItem->setText(formatBinary(v));
         binItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
         binItem->setFont(QFont("Courier", 9));
+        binItem->setForeground(colors.tableText);
 
         // Decimal
         QTableWidgetItem* decItem = _table->item(int(i), 3);
@@ -442,8 +494,29 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
         }
         decItem->setText(QString::number(v));
         decItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        decItem->setForeground(colors.tableText);
 
-        // Status
+        // Определяем состояние строки ДО применения цветов - проверяем ВСЕ результаты
+        // ВАЖНО: Проверяем все результаты, не только первый найденный
+        bool hasFailedTest = false;
+        bool passed = true;
+        bool foundResult = false;
+        for (const auto& r : _lastResults) {
+            if (r.addr == i) {
+                foundResult = true;
+                passed = r.passed;
+                if (!r.passed) {
+                    hasFailedTest = true;
+                    break; // Нашли неисправность, можно прервать
+                }
+            }
+        }
+        // Если результат не найден, но адрес в testedAddresses, значит он протестирован и прошел
+        if (!foundResult && isTested) {
+            passed = true; // По умолчанию считаем прошедшим, если нет результата
+        }
+
+        // Status - используем правильную логику определения статуса
         QTableWidgetItem* statusItem = _table->item(int(i), 4);
         if (!statusItem) {
             statusItem = new QTableWidgetItem;
@@ -457,24 +530,19 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
         statusItem->setToolTip("");
         
         if (isTested) {
-            // Find test result for this address
-            bool passed = true;
-            for (const auto& r : _lastResults) {
-                if (r.addr == i) {
-                    passed = r.passed;
-                    break;
-                }
-            }
             if (passed) {
                 statusItem->setText("Исправна");
-                statusItem->setBackground(QColor(200, 255, 200));
+                statusItem->setBackground(colors.statusPassedBg);
+                statusItem->setForeground(colors.statusPassedText);
             } else {
                 statusItem->setText("Неисправна");
-                statusItem->setBackground(QColor(255, 200, 200));
+                statusItem->setBackground(colors.statusFailedBg);
+                statusItem->setForeground(colors.statusFailedText);
             }
         } else {
             statusItem->setText("Не протестировано");
-            statusItem->setBackground(QColor(240, 240, 240));
+            statusItem->setBackground(colors.statusUntestedBg);
+            statusItem->setForeground(colors.statusUntestedText);
         }
 
         // Fault Type
@@ -490,6 +558,11 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
         
         if (isFaulty) {
             faultTypeItem->setText(getFaultModelName(f.model));
+            if (_currentTheme == Theme::DeusEx) {
+                faultTypeItem->setForeground(QColor(244, 208, 63)); // Золотистый текст
+            } else {
+                faultTypeItem->setForeground(QColor(0, 255, 0)); // Яркий зеленый текст
+            }
         } else if (isTested) {
             // Check if fault was detected
             bool faultDetected = false;
@@ -504,93 +577,194 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
             }
             if (!faultDetected) {
                 faultTypeItem->setText("—");
+                if (_currentTheme == Theme::DeusEx) {
+                    faultTypeItem->setForeground(QColor(224, 224, 224)); // Светло-серый текст
+                } else {
+                    faultTypeItem->setForeground(QColor(0, 255, 65)); // Зеленый текст
+                }
             } else {
                 faultTypeItem->setText("Обнаружена");
+                if (_currentTheme == Theme::DeusEx) {
+                    faultTypeItem->setForeground(QColor(255, 100, 100)); // Светло-красный текст
+                } else {
+                    faultTypeItem->setForeground(QColor(255, 0, 0)); // Красный текст
+                }
             }
         } else {
             faultTypeItem->setText("—");
-        }
-
-        // Color coding for rows - ВАЖНОЕ ИСПРАВЛЕНИЕ: Правильная логика сброса цветов
-        bool hasFailedTest = false;
-        if (isTested) {
-            for (const auto& r : _lastResults) {
-                if (r.addr == i && !r.passed) {
-                    hasFailedTest = true;
-                    break;
-                }
+            if (_currentTheme == Theme::DeusEx) {
+                faultTypeItem->setForeground(QColor(224, 224, 224)); // Светло-серый текст
+            } else {
+                faultTypeItem->setForeground(QColor(0, 255, 65)); // Зеленый текст
             }
         }
 
-        // Полностью сбрасываем все цвета перед применением новых
+        // Применяем цвета в зависимости от состояния строки
+        // ВАЖНО: Сначала применяем все обычные цвета, потом КРАСНОЕ выделение в ОТДЕЛЬНОМ цикле
         for (int col = 0; col < _table->columnCount(); ++col) {
             QTableWidgetItem* item = _table->item(int(i), col);
-            if (item) {
-                // Сбрасываем жирный шрифт
-                QFont itemFont = item->font();
-                itemFont.setBold(false);
-                item->setFont(itemFont);
-                
-                // Сбрасываем цвет фона на стандартный
-                if (_table->alternatingRowColors()) {
-                    // Восстанавливаем чередование цветов строк
-                    if (i % 2 == 0) {
-                        item->setBackground(QColor(255, 255, 255)); // Белый
-                    } else {
-                        item->setBackground(QColor(240, 240, 240)); // Светло-серый
+            if (!item) continue;
+
+            // Сбрасываем жирный шрифт
+            QFont itemFont = item->font();
+            itemFont.setBold(false);
+            item->setFont(itemFont);
+
+            // Очищаем тултипы (кроме колонки типа неисправности)
+            if (col != 5) {
+                item->setToolTip("");
+            }
+
+            // Применяем обычные цвета ТОЛЬКО если нет неисправности
+            // НЕ применяем красное выделение здесь - оно будет применено отдельно
+            if (col != 4) {
+                if (!hasFailedTest) {
+                    // Сбрасываем флаг неисправности для делегата
+                    item->setData(Qt::UserRole + 1, QVariant(false));
+                    
+                    // Золотистый для неисправной области (еще не тестировалась)
+                    if (isFaulty && !isTested && col != 5) {
+                        item->setBackground(colors.faultyNotTestedBg);
+                        item->setForeground(colors.faultyNotTestedText);
                     }
-                } else {
-                    item->setBackground(QColor(255, 255, 255)); // Белый
+                    // Зеленый для протестированных и исправных
+                    else if (isTested && col != 5) {
+                        item->setBackground(colors.passedTestBg);
+                        item->setForeground(colors.passedTestText);
+                    }
+                    // Темный для непротестированных
+                    else if (!isTested && col != 5) {
+                        if (i % 2 == 0) {
+                            item->setBackground(colors.untestedBgEven);
+                        } else {
+                            item->setBackground(colors.untestedBgOdd);
+                        }
+                        item->setForeground(colors.tableText);
+                    }
+                    // Стандартные цвета для первых 4 колонок (fallback)
+                    else if (col < 4) {
+                        if (i % 2 == 0) {
+                            item->setBackground(colors.tableBgEven);
+                        } else {
+                            item->setBackground(colors.tableBgOdd);
+                        }
+                        item->setForeground(colors.tableText);
+                    }
                 }
-                
-                // Очищаем тултипы
-                if (col != 5) { // Сохраняем тултипы только для колонки "Тип неисправности"
-                    item->setToolTip("");
-                }
+                // Если есть неисправность, НЕ применяем обычные цвета - они будут перезаписаны красным
             }
         }
 
-        // Теперь применяем правильные цвета
+        // КРАСНОЕ ВЫДЕЛЕНИЕ - АБСОЛЮТНЫЙ ПРИОРИТЕТ (применяется в ОТДЕЛЬНОМ цикле ПОСЛЕ всех остальных)
+        // Применяется ко всем колонкам кроме статуса (колонка 4) и типа неисправности (колонка 5)
+        // ВАЖНО: Это должно быть ПОСЛЕ основного цикла, чтобы перезаписать любые другие цвета
         if (hasFailedTest) {
-            // Красный фон для неудачных тестов (кроме колонки статуса)
+            // ЛОГИРОВАНИЕ: Логируем применение красного выделения
+            logInfo(QString("refreshTable: Адрес %1 - hasFailedTest=true, применяю красное выделение (фон: %2, текст: %3)")
+                    .arg(i).arg(colors.failedTestBg.name()).arg(colors.failedTestText.name()));
+            
+            // Применяем красное выделение ко всем колонкам строки (кроме статуса)
             for (int col = 0; col < _table->columnCount(); ++col) {
+                if (col == 4) continue; // Пропускаем колонку статуса
                 QTableWidgetItem* item = _table->item(int(i), col);
-                if (item && col != 4) { // Не перезаписываем статус колонки
-                    item->setBackground(QColor(255, 200, 200));
+                if (!item) {
+                    // Если элемента нет, создаем его
+                    item = new QTableWidgetItem;
+                    _table->setItem(int(i), col, item);
                 }
+                // Принудительно устанавливаем красное выделение
+                QBrush redBrush(colors.failedTestBg);
+                QBrush whiteBrush(colors.failedTestText);
+                // Устанавливаем через setData для гарантированной установки
+                item->setData(Qt::BackgroundRole, redBrush);
+                item->setData(Qt::ForegroundRole, whiteBrush);
+                // Также устанавливаем через setBackground/setForeground
+                item->setBackground(redBrush);
+                item->setForeground(whiteBrush);
+                // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Помечаем элемент как неисправный для делегата
+                // Делегат будет использовать этот флаг для правильной отрисовки красного выделения
+                item->setData(Qt::UserRole + 1, QVariant(true)); // Помечаем как неисправный элемент
             }
-        } else if (isFaulty && !isTested) {
-            // Желтый для неисправной области, которая еще не тестировалась
-            for (int col = 0; col < _table->columnCount(); ++col) {
-                QTableWidgetItem* item = _table->item(int(i), col);
-                if (item && col != 4 && col != 5) { // Не перезаписываем статус и тип неисправности
-                    item->setBackground(QColor(255, 240, 200));
-                }
-            }
-        } else if (!isTested) {
-            // Серый для непротестированных адресов
-            for (int col = 0; col < _table->columnCount(); ++col) {
-                QTableWidgetItem* item = _table->item(int(i), col);
-                if (item && col != 4 && col != 5) {
-                    if (i % 2 == 0) {
-                        item->setBackground(QColor(250, 250, 250));
-                    } else {
-                        item->setBackground(QColor(245, 245, 245));
-                    }
-                }
-            }
-        } else {
-            // Зеленый/белый для протестированных и исправных адресов
-            for (int col = 0; col < _table->columnCount(); ++col) {
-                QTableWidgetItem* item = _table->item(int(i), col);
-                if (item && col != 4 && col != 5) {
-                    item->setBackground(QColor(240, 255, 240));
-                }
-            }
+        } else if (failedAddressesForLog.count(i) > 0) {
+            // ЛОГИРОВАНИЕ: Если адрес в списке неисправных, но hasFailedTest=false - это ошибка!
+            logError(QString("refreshTable: ОШИБКА! Адрес %1 в списке неисправных, но hasFailedTest=false!")
+                    .arg(i));
         }
     }
 
-    _table->resizeColumnsToContents();
+    // ВАЖНО: Применяем красное выделение ЕЩЕ РАЗ после всех обновлений
+    // Это гарантирует, что оно не будет перезаписано
+    // Сначала собираем все адреса с неисправностями
+    std::set<size_t> failedAddresses;
+    for (const auto& r : _lastResults) {
+        if (!r.passed) {
+            failedAddresses.insert(r.addr);
+        }
+    }
+    
+    // Теперь применяем красное выделение ко всем неисправным адресам
+    logInfo(QString("refreshTable: Второй проход - применяю красное выделение к %1 адресам")
+            .arg(failedAddresses.size()));
+    for (size_t addr : failedAddresses) {
+        if (addr >= n) continue; // Проверка границ
+        
+        // Применяем красное выделение ко всем колонкам строки (кроме статуса)
+        for (int col = 0; col < _table->columnCount(); ++col) {
+            if (col == 4) continue; // Пропускаем колонку статуса
+            QTableWidgetItem* item = _table->item(int(addr), col);
+            if (!item) {
+                // Если элемента нет, создаем его
+                item = new QTableWidgetItem;
+                _table->setItem(int(addr), col, item);
+            }
+            // Принудительно устанавливаем красное выделение
+            QBrush redBrush(colors.failedTestBg);
+            QBrush whiteBrush(colors.failedTestText);
+            // Устанавливаем через setData для гарантированной установки
+            item->setData(Qt::BackgroundRole, redBrush);
+            item->setData(Qt::ForegroundRole, whiteBrush);
+            // Также устанавливаем через setBackground/setForeground
+            item->setBackground(redBrush);
+            item->setForeground(whiteBrush);
+            // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Помечаем элемент как неисправный для делегата
+            // Делегат будет использовать этот флаг для правильной отрисовки красного выделения
+            item->setData(Qt::UserRole + 1, QVariant(true)); // Помечаем как неисправный элемент
+        }
+    }
+
+    // Включаем обновление виджета обратно
+    _table->setUpdatesEnabled(true);
+    
+    // ЛОГИРОВАНИЕ: Проверяем фактические цвета элементов после применения
+    int verifiedCount = 0;
+    int mismatchCount = 0;
+    for (size_t addr : failedAddresses) {
+        if (addr >= n) continue;
+        bool allCorrect = true;
+        for (int col = 0; col < _table->columnCount(); ++col) {
+            if (col == 4) continue; // Пропускаем колонку статуса
+            QTableWidgetItem* item = _table->item(int(addr), col);
+            if (item) {
+                QColor actualBg = item->background().color();
+                QColor expectedBg = colors.failedTestBg;
+                if (actualBg.rgb() != expectedBg.rgb()) {
+                    allCorrect = false;
+                    logError(QString("refreshTable: НЕСООТВЕТСТВИЕ! Адрес %1, колонка %2 - ожидался фон %3, фактический %4")
+                            .arg(addr).arg(col).arg(expectedBg.name()).arg(actualBg.name()));
+                    mismatchCount++;
+                }
+            }
+        }
+        if (allCorrect) {
+            verifiedCount++;
+        }
+    }
+    logInfo(QString("refreshTable: Проверка завершена - правильно окрашено: %1, несоответствий: %2")
+            .arg(verifiedCount).arg(mismatchCount));
+    
+    // Оптимизация: resizeColumnsToContents очень медленный, вызываем только при необходимости
+    // Можно вызывать реже или только при изменении размера окна
+    // _table->resizeColumnsToContents(); // Отключено для производительности
 }
 
 void MainWindow::clearLog() {
@@ -642,6 +816,7 @@ void MainWindow::scrollToNextFault() {
     }
     
     // Собираем все адреса с неисправностями в отсортированный список
+    // ВАЖНО: Используем актуальные результаты из _lastResults
     std::set<size_t> faultAddresses;
     for (const auto& r : _lastResults) {
         if (!r.passed) {
@@ -657,19 +832,20 @@ void MainWindow::scrollToNextFault() {
         return;
     }
     
-    // Убеждаемся, что таблица обновлена
-    refreshTable(0, _mem->size());
-    
-    // Получаем текущую выбранную строку (или начинаем с 0)
+    // Получаем текущую выбранную строку
     int currentRow = _table->currentRow();
-    if (currentRow < 0) {
-        currentRow = 0;
+    size_t startAddr = 0;
+    
+    // Если есть выбранная строка, используем её адрес
+    if (currentRow >= 0 && currentRow < int(_mem->size())) {
+        startAddr = static_cast<size_t>(currentRow);
     }
-    size_t startAddr = static_cast<size_t>(currentRow);
+    
     size_t nextAddr = 0;
     bool found = false;
     
     // Ищем следующую неисправность, начиная со следующего адреса после текущего
+    // Используем upper_bound чтобы найти первый адрес строго больше текущего
     auto it = faultAddresses.upper_bound(startAddr);
     
     if (it != faultAddresses.end()) {
@@ -677,13 +853,19 @@ void MainWindow::scrollToNextFault() {
         nextAddr = *it;
         found = true;
     } else {
-        // Дошли до конца, переходим к началу
+        // Дошли до конца, переходим к началу (циклический поиск)
         it = faultAddresses.begin();
         if (it != faultAddresses.end()) {
             nextAddr = *it;
-            // Если вернулись к начальной позиции - останавливаемся
-            if (nextAddr == startAddr) {
-                logInfo(QString("Достигнута начальная позиция. Остановка на адресе: %1").arg(nextAddr));
+            // Если мы уже на неисправном адресе и есть другие неисправности, переходим к следующей
+            if (nextAddr == startAddr && faultAddresses.size() > 1) {
+                ++it;
+                if (it != faultAddresses.end()) {
+                    nextAddr = *it;
+                } else {
+                    // Если следующей нет, берем первую
+                    nextAddr = *faultAddresses.begin();
+                }
             }
             found = true;
         }
@@ -692,6 +874,22 @@ void MainWindow::scrollToNextFault() {
     if (!found) {
         logWarning("Не удалось найти следующую неисправность.");
         return;
+    }
+    
+    // ВАЖНО: Проверяем, что найденный адрес действительно неисправен в текущих результатах
+    bool isActuallyFaulty = false;
+    for (const auto& r : _lastResults) {
+        if (r.addr == nextAddr && !r.passed) {
+            isActuallyFaulty = true;
+            break;
+        }
+    }
+    
+    if (!isActuallyFaulty) {
+        logWarning(QString("Адрес %1 больше не является неисправным. Обновляю таблицу...").arg(nextAddr));
+        refreshTable(0, _mem->size());
+        // Пытаемся найти следующую неисправность снова
+        return scrollToNextFault();
     }
     
     // Прокручиваем к найденной неисправности
@@ -731,25 +929,29 @@ void MainWindow::updateStatistics() {
 
 void MainWindow::logInfo(const QString& message) {
     QString timestamp = QTime::currentTime().toString("hh:mm:ss");
-    _log->setTextColor(QColor(0, 0, 0));
+    ThemeColors colors = ThemeManager::getColors(_currentTheme);
+    _log->setTextColor(colors.logInfo);
     _log->append(QString("[%1] INFO: %2").arg(timestamp).arg(message));
 }
 
 void MainWindow::logWarning(const QString& message) {
     QString timestamp = QTime::currentTime().toString("hh:mm:ss");
-    _log->setTextColor(QColor(255, 140, 0));
+    ThemeColors colors = ThemeManager::getColors(_currentTheme);
+    _log->setTextColor(colors.logWarning);
     _log->append(QString("[%1] WARNING: %2").arg(timestamp).arg(message));
 }
 
 void MainWindow::logError(const QString& message) {
     QString timestamp = QTime::currentTime().toString("hh:mm:ss");
-    _log->setTextColor(QColor(255, 0, 0));
+    ThemeColors colors = ThemeManager::getColors(_currentTheme);
+    _log->setTextColor(colors.logError);
     _log->append(QString("[%1] ERROR: %2").arg(timestamp).arg(message));
 }
 
 void MainWindow::logSuccess(const QString& message) {
     QString timestamp = QTime::currentTime().toString("hh:mm:ss");
-    _log->setTextColor(QColor(0, 150, 0));
+    ThemeColors colors = ThemeManager::getColors(_currentTheme);
+    _log->setTextColor(colors.logSuccess);
     _log->append(QString("[%1] SUCCESS: %2").arg(timestamp).arg(message));
 }
 
@@ -757,7 +959,11 @@ void MainWindow::updateFaultInfo() {
     auto f = _mem->currentFault();
     if (f.model == FaultModel::None) {
         _faultInfoLabel->setText("Неисправность не внедрена");
-        _faultInfoLabel->setStyleSheet("padding: 5px; background-color: #f0f0f0; border: 1px solid #ccc;");
+        if (_currentTheme == Theme::DeusEx) {
+            _faultInfoLabel->setStyleSheet("padding: 5px; background-color: #2d2d2d; border: 1px solid #d4af37; color: #e0e0e0;");
+        } else {
+            _faultInfoLabel->setStyleSheet("padding: 5px; background-color: #0a0a0a; border: 1px solid #00ff00; color: #00ff41;");
+        }
     } else {
         QString info = QString("Тип: %1\nАдрес: %2\nДлина: %3 слов")
                        .arg(getFaultModelName(f.model))
@@ -767,7 +973,11 @@ void MainWindow::updateFaultInfo() {
             info += QString("\nВероятность инверсии: %1%").arg(f.flip_probability * 100, 0, 'f', 1);
         }
         _faultInfoLabel->setText(info);
-        _faultInfoLabel->setStyleSheet("padding: 5px; background-color: #fff4e6; border: 1px solid #ffa500;");
+        if (_currentTheme == Theme::DeusEx) {
+            _faultInfoLabel->setStyleSheet("padding: 5px; background-color: #3d2d1a; border: 1px solid #d4af37; color: #e0e0e0;");
+        } else {
+            _faultInfoLabel->setStyleSheet("padding: 5px; background-color: #0a1a0a; border: 1px solid #00ff00; color: #00ff41;");
+        }
     }
     updateStatistics();
 }
@@ -797,38 +1007,77 @@ void MainWindow::updateProgressDetails(size_t addr, Word expected, Word read) {
     _expectedValueLabel->setText(QString("Ожидается: 0x%1").arg(expected, 8, 16, QChar('0')).toUpper());
     _readValueLabel->setText(QString("Прочитано: 0x%1").arg(read, 8, 16, QChar('0')).toUpper());
 
-    // Highlight current address in table
+    // Оптимизация: обновляем таблицу реже и не прокручиваем при каждом обновлении
+    // Прокручиваем только каждые 20 адресов или если адрес близок к краю видимой области
     if (addr < _mem->size() && int(addr) < _table->rowCount()) {
-        // Clear previous bold highlighting (but keep background colors)
-        if (_lastHighlightedAddr != addr && _lastHighlightedAddr < _mem->size() && int(_lastHighlightedAddr) < _table->rowCount()) {
+        // Обновляем выделение только если адрес изменился значительно
+        if (addr != _lastHighlightedAddr) {
+            // Clear previous bold highlighting (but keep background colors)
+            if (_lastHighlightedAddr < _mem->size() && int(_lastHighlightedAddr) < _table->rowCount()) {
+                for (int col = 0; col < _table->columnCount(); ++col) {
+                    QTableWidgetItem* item = _table->item(int(_lastHighlightedAddr), col);
+                    if (item) {
+                        QFont font = item->font();
+                        font.setBold(false);
+                        item->setFont(font);
+                    }
+                }
+            }
+
+            // Highlight current address with bold font
+            ThemeColors colors = ThemeManager::getColors(_currentTheme);
             for (int col = 0; col < _table->columnCount(); ++col) {
-                QTableWidgetItem* item = _table->item(int(_lastHighlightedAddr), col);
+                QTableWidgetItem* item = _table->item(int(addr), col);
                 if (item) {
                     QFont font = item->font();
-                    font.setBold(false);
+                    font.setBold(true);
                     item->setFont(font);
+                    // Don't change background if it's a failed test or faulty area
+                    // ИСПРАВЛЕНИЕ: Используем rgb() для сравнения цветов вместо прямого сравнения
+                    QColor currentBg = item->background().color();
+                    QRgb currentBgRgb = currentBg.rgb();
+                    QRgb failedTestBgRgb = colors.failedTestBg.rgb();
+                    QRgb faultyNotTestedBgRgb = colors.faultyNotTestedBg.rgb();
+                    bool isSpecialColor = (currentBgRgb == failedTestBgRgb || currentBgRgb == faultyNotTestedBgRgb);
+                    
+                    // ЛОГИРОВАНИЕ: Логируем, если перезаписываем цвет
+                    if (!isSpecialColor && col != 4) {
+                        // Проверяем, является ли этот адрес неисправным
+                        bool isFailedAddr = false;
+                        for (const auto& r : _lastResults) {
+                            if (r.addr == addr && !r.passed) {
+                                isFailedAddr = true;
+                                break;
+                            }
+                        }
+                        if (isFailedAddr) {
+                            logWarning(QString("updateProgressDetails: ПЕРЕЗАПИСЬ! Адрес %1, колонка %2 - текущий фон %3, но адрес неисправен!")
+                                    .arg(addr).arg(col).arg(currentBg.name()));
+                        }
+                    }
+                    
+                    if (!isSpecialColor) {
+                        if (_currentTheme == Theme::DeusEx) {
+                            item->setBackground(QColor(70, 80, 100)); // Темно-синий для Deus Ex
+                            item->setForeground(colors.tableText);
+                        } else {
+                            item->setBackground(QColor(0, 50, 50)); // Темно-зеленый/синий для Matrix
+                            item->setForeground(colors.tableText);
+                        }
+                    } else {
+                        // ЛОГИРОВАНИЕ: Логируем, что сохраняем специальный цвет
+                        logInfo(QString("updateProgressDetails: Адрес %1, колонка %2 - сохраняю специальный цвет %3")
+                                .arg(addr).arg(col).arg(currentBg.name()));
+                    }
                 }
             }
-        }
+            _lastHighlightedAddr = addr;
 
-        // Highlight current address with bold font
-        for (int col = 0; col < _table->columnCount(); ++col) {
-            QTableWidgetItem* item = _table->item(int(addr), col);
-            if (item) {
-                QFont font = item->font();
-                font.setBold(true);
-                item->setFont(font);
-                // Don't change background if it's a failed test (red) or faulty area (yellow)
-                QColor currentBg = item->background().color();
-                if (currentBg != QColor(255, 200, 200) && currentBg != QColor(255, 240, 200)) {
-                    item->setBackground(QColor(220, 240, 255)); // Light blue for current address
-                }
+            // Прокручиваем только каждые 20 адресов для производительности
+            if (addr % 20 == 0) {
+                _table->scrollToItem(_table->item(int(addr), 0), QAbstractItemView::EnsureVisible);
             }
         }
-        _lastHighlightedAddr = addr;
-
-        // Scroll to current address
-        _table->scrollToItem(_table->item(int(addr), 0), QAbstractItemView::EnsureVisible);
     }
 }
 
@@ -865,5 +1114,53 @@ QString MainWindow::getAlgorithmDescription(TestAlgorithm algo) {
                    "записывает все единицы, проверяет единицы. Обнаруживает основные неисправности памяти.";
         default:
             return "Описание недоступно";
+    }
+}
+
+QString MainWindow::getThemeStylesheet(Theme theme) {
+    return ThemeManager::getStylesheet(theme);
+}
+
+void MainWindow::applyTheme(Theme theme) {
+    _currentTheme = theme;
+    
+    // Apply stylesheet to main window
+    setStyleSheet(getThemeStylesheet(theme));
+    
+    // Update fault info label with theme-specific colors
+    updateFaultInfo();
+    
+    // Update test info label with theme-specific colors
+    auto f = _mem->currentFault();
+    if (f.model == FaultModel::None) {
+        if (theme == Theme::DeusEx) {
+            _faultInfoLabel->setStyleSheet("padding: 5px; background-color: #2d2d2d; border: 1px solid #d4af37; color: #e0e0e0;");
+        } else {
+            _faultInfoLabel->setStyleSheet("padding: 5px; background-color: #0a0a0a; border: 1px solid #00ff00; color: #00ff41;");
+        }
+    } else {
+        if (theme == Theme::DeusEx) {
+            _faultInfoLabel->setStyleSheet("padding: 5px; background-color: #3d2d1a; border: 1px solid #d4af37; color: #e0e0e0;");
+        } else {
+            _faultInfoLabel->setStyleSheet("padding: 5px; background-color: #0a1a0a; border: 1px solid #00ff00; color: #00ff41;");
+        }
+    }
+    
+    if (theme == Theme::DeusEx) {
+        _testInfoLabel->setStyleSheet("padding: 5px; background-color: #2d3d3d; border: 1px solid #d4af37; color: #e0e0e0;");
+    } else {
+        _testInfoLabel->setStyleSheet("padding: 5px; background-color: #0a1a0a; border: 1px solid #00ff00; color: #00ff41;");
+    }
+    
+    // Refresh table to apply theme colors
+    refreshTable(0, _mem->size());
+}
+
+void MainWindow::onThemeChanged() {
+    QAction* action = _themeGroup->checkedAction();
+    if (action == _deusExAction) {
+        applyTheme(Theme::DeusEx);
+    } else if (action == _matrixAction) {
+        applyTheme(Theme::Matrix);
     }
 }

@@ -14,7 +14,7 @@
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent), _currentTestAddr(0), _lastHighlightedAddr(0), _testRunning(false) {
-    setWindowTitle("Цифровой двойник ОЗУ — Тестбенч");
+    setWindowTitle("Цифровой двойник ОЗУ — 350504 Витовт Даник Маша Настя");
     resize(1400, 800);
 
     _mem = new MemoryModel(256, this);
@@ -173,11 +173,11 @@ MainWindow::MainWindow(QWidget* parent)
     _searchEdit->setPlaceholderText("Введите адрес (0-255)");
     _searchEdit->setValidator(new QIntValidator(0, 255, this));
     _searchBtn = new QPushButton("Найти");
-    _scrollToFaultBtn = new QPushButton("Перейти к неисправности");
-    _scrollToFaultBtn->setToolTip("Прокрутить таблицу к адресу с неисправностью");
+    _scrollToNextFaultBtn = new QPushButton("Следующая неисправность");
+    _scrollToNextFaultBtn->setToolTip("Перейти к следующей обнаруженной неисправности (с циклическим поиском)");
     tableControlsLayout->addWidget(_searchEdit);
     tableControlsLayout->addWidget(_searchBtn);
-    tableControlsLayout->addWidget(_scrollToFaultBtn);
+    tableControlsLayout->addWidget(_scrollToNextFaultBtn);
     tableControlsLayout->addStretch();
     memoryLayout->addLayout(tableControlsLayout);
 
@@ -249,7 +249,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(_startBtn, &QPushButton::clicked, this, &MainWindow::onStartTest);
     connect(_clearLogBtn, &QPushButton::clicked, this, &MainWindow::clearLog);
     connect(_exportBtn, &QPushButton::clicked, this, &MainWindow::exportResults);
-    connect(_scrollToFaultBtn, &QPushButton::clicked, this, &MainWindow::scrollToFault);
+    connect(_scrollToNextFaultBtn, &QPushButton::clicked, this, &MainWindow::scrollToNextFault);
     connect(_searchBtn, &QPushButton::clicked, this, [this]() {
         bool ok;
         int addr = _searchEdit->text().toInt(&ok);
@@ -632,18 +632,75 @@ void MainWindow::exportResults() {
     logSuccess(QString("Результаты экспортированы в файл: %1").arg(fileName));
 }
 
-void MainWindow::scrollToFault() {
-    auto f = _mem->currentFault();
-    if (f.model == FaultModel::None) {
-        logWarning("Неисправность не внедрена.");
+void MainWindow::scrollToNextFault() {
+    // Проверяем, были ли запущены тесты
+    if (_lastResults.empty()) {
+        logWarning("Тесты еще не запускались. Сначала запустите тест памяти.");
+        QMessageBox::information(this, "Тесты не запущены", 
+                                "Тесты еще не запускались.\nСначала запустите тест памяти.");
         return;
     }
-
-    int row = int(f.addr);
+    
+    // Собираем все адреса с неисправностями в отсортированный список
+    std::set<size_t> faultAddresses;
+    for (const auto& r : _lastResults) {
+        if (!r.passed) {
+            faultAddresses.insert(r.addr);
+        }
+    }
+    
+    // Если неисправностей нет
+    if (faultAddresses.empty()) {
+        logWarning("Неисправности не найдены тестами. Все проверки прошли успешно.");
+        QMessageBox::information(this, "Неисправности не найдены", 
+                                "Тестами не обнаружено неисправностей.\nВсе проверки прошли успешно.");
+        return;
+    }
+    
+    // Убеждаемся, что таблица обновлена
+    refreshTable(0, _mem->size());
+    
+    // Получаем текущую выбранную строку (или начинаем с 0)
+    int currentRow = _table->currentRow();
+    if (currentRow < 0) {
+        currentRow = 0;
+    }
+    size_t startAddr = static_cast<size_t>(currentRow);
+    size_t nextAddr = 0;
+    bool found = false;
+    
+    // Ищем следующую неисправность, начиная со следующего адреса после текущего
+    auto it = faultAddresses.upper_bound(startAddr);
+    
+    if (it != faultAddresses.end()) {
+        // Нашли неисправность после текущей позиции
+        nextAddr = *it;
+        found = true;
+    } else {
+        // Дошли до конца, переходим к началу
+        it = faultAddresses.begin();
+        if (it != faultAddresses.end()) {
+            nextAddr = *it;
+            // Если вернулись к начальной позиции - останавливаемся
+            if (nextAddr == startAddr) {
+                logInfo(QString("Достигнута начальная позиция. Остановка на адресе: %1").arg(nextAddr));
+            }
+            found = true;
+        }
+    }
+    
+    if (!found) {
+        logWarning("Не удалось найти следующую неисправность.");
+        return;
+    }
+    
+    // Прокручиваем к найденной неисправности
+    int row = int(nextAddr);
     if (row >= 0 && row < _table->rowCount()) {
+        _table->setCurrentCell(row, 0);
+        _table->scrollTo(_table->model()->index(row, 0), QAbstractItemView::EnsureVisible);
         _table->selectRow(row);
-        _table->scrollToItem(_table->item(row, 0), QAbstractItemView::EnsureVisible);
-        logInfo(QString("Переход к адресу с неисправностью: %1").arg(f.addr));
+        logInfo(QString("Переход к следующей неисправности по адресу: %1").arg(nextAddr));
     }
 }
 

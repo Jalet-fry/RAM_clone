@@ -30,7 +30,7 @@ private slots:
     void refreshTable(size_t begin, size_t end);
     void clearLog();
     void exportResults();
-    void scrollToFault();
+    void scrollToNextFault();
     void onAlgorithmChanged(int index);
     void updateFaultInfo();
     void updateStatistics();
@@ -86,7 +86,7 @@ private:
     QTextEdit* _log;
     QLineEdit* _searchEdit;
     QPushButton* _searchBtn;
-    QPushButton* _scrollToFaultBtn;
+    QPushButton* _scrollToNextFaultBtn;
     QPushButton* _clearLogBtn;
     QPushButton* _exportBtn;
 

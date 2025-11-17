@@ -1,4 +1,3 @@
-
 #include "memorymodel.h"
 #include <algorithm>
 #include <chrono>
@@ -27,44 +26,40 @@ bool MemoryModel::_isAddrFaulty(size_t addr) const {
 Word MemoryModel::read(size_t addr) {
     QMutexLocker locker(&_mutex);
     if (addr >= _words.size()) return 0u;
-    if (!_isAddrFaulty(addr)) return _words[addr];
+    
+    Word stored_value = _words[addr]; // Всегда читаем фактически хранимое значение
+    
+    if (!_isAddrFaulty(addr)) 
+        return stored_value;
 
+    // НЕИСПРАВНОСТИ ПРИМЕНЯЮТСЯ ТОЛЬКО ПРИ ЧТЕНИИ
     switch (_injected.model) {
-        case FaultModel::StuckAt0: return 0u;
-        case FaultModel::StuckAt1: return static_cast<Word>(~0u);
-        case FaultModel::OpenRead: return 0xFFFFFFFFu; // marker for invalid read
+        case FaultModel::StuckAt0: 
+            return 0u;
+        case FaultModel::StuckAt1: 
+            return static_cast<Word>(~0u);
+        case FaultModel::OpenRead: 
+            return 0xFFFFFFFFu; // marker for invalid read
         case FaultModel::BitFlip: {
-            Word v = _words[addr];
+            Word v = stored_value; // Искажаем хранимое значение
             std::bernoulli_distribution d(_injected.flip_probability);
-            // generate flips using single RNG; cost is small
-            for (int b = 0; b < 32; ++b) if (d(_rng)) v ^= (1u << b);
+            for (int b = 0; b < 32; ++b) 
+                if (d(_rng)) 
+                    v ^= (1u << b);
             return v;
         }
-        default: return _words[addr];
+        default: 
+            return stored_value;
     }
 }
 
 void MemoryModel::write(size_t addr, Word value) {
     QMutexLocker locker(&_mutex);
     if (addr >= _words.size()) return;
-    if (!_isAddrFaulty(addr)) {
-        _words[addr] = value;
-    } else {
-        switch (_injected.model) {
-            case FaultModel::StuckAt0: _words[addr] = 0u; break;
-            case FaultModel::StuckAt1: _words[addr] = ~0u; break;
-            case FaultModel::OpenRead:
-                // OpenRead models an issue at read—write may succeed normally
-                _words[addr] = value; break;
-            case FaultModel::BitFlip: {
-                Word v = value;
-                std::bernoulli_distribution d(_injected.flip_probability);
-                for (int b = 0; b < 32; ++b) if (d(_rng)) v ^= (1u << b);
-                _words[addr] = v; break;
-            }
-            default: _words[addr] = value; break;
-        }
-    }
+    
+    // ЗАПИСЬ ВСЕГДА СОХРАНЯЕТ ТОЧНОЕ ЗНАЧЕНИЕ (не применяем неисправности при записи)
+    _words[addr] = value;
+    
     locker.unlock();
     emit dataChanged(addr, addr + 1);
 }

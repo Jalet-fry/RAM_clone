@@ -5,27 +5,23 @@
 #include <QThread>
 #include "memorytester.h"
 
-
-// TesterWorker is a small wrapper that lives in its own QThread.
 class TesterWorker : public QObject {
-Q_OBJECT
+    Q_OBJECT
 public:
-explicit TesterWorker(MemoryModel* mem, QObject* parent = nullptr);
-~TesterWorker() override;
-
+    explicit TesterWorker(MemoryModel* mem, QObject* parent = nullptr);
+    ~TesterWorker() override;
 
 public slots:
-void run(TestAlgorithm algo); // queued: runs testers in worker thread
-
+    void run(TestAlgorithm algo);
 
 signals:
-void progress(int percent);
-void progressDetail(size_t addr, Word expected, Word read);
-void finished(const std::vector<TestResult>& results);
-
+    void progress(int percent);
+    void progressDetail(size_t addr, Word expected, Word read);
+    void finished(const std::vector<TestResult>& results);
 
 private:
-QThread _thread;
-MemoryModel* _mem;
+    QThread _thread;
+    MemoryModel* _mem;
 };
+
 #endif // TESTERWORKER_H

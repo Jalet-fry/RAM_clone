@@ -449,6 +449,13 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
             statusItem = new QTableWidgetItem;
             _table->setItem(int(i), 4, statusItem);
         }
+        
+        // ВАЖНОЕ ИСПРАВЛЕНИЕ: Всегда сбрасываем шрифт и очищаем тултипы
+        QFont font = statusItem->font();
+        font.setBold(false);
+        statusItem->setFont(font);
+        statusItem->setToolTip("");
+        
         if (isTested) {
             // Find test result for this address
             bool passed = true;
@@ -476,6 +483,11 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
             faultTypeItem = new QTableWidgetItem;
             _table->setItem(int(i), 5, faultTypeItem);
         }
+        
+        // ВАЖНОЕ ИСПРАВЛЕНИЕ: Всегда сбрасываем шрифт и очищаем тултипы
+        faultTypeItem->setFont(font);
+        faultTypeItem->setToolTip("");
+        
         if (isFaulty) {
             faultTypeItem->setText(getFaultModelName(f.model));
         } else if (isTested) {
@@ -499,7 +511,7 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
             faultTypeItem->setText("—");
         }
 
-        // Color coding for rows
+        // Color coding for rows - ВАЖНОЕ ИСПРАВЛЕНИЕ: Правильная логика сброса цветов
         bool hasFailedTest = false;
         if (isTested) {
             for (const auto& r : _lastResults) {
@@ -510,33 +522,65 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
             }
         }
 
-        // Apply row colors (but preserve status column colors set above)
+        // Полностью сбрасываем все цвета перед применением новых
+        for (int col = 0; col < _table->columnCount(); ++col) {
+            QTableWidgetItem* item = _table->item(int(i), col);
+            if (item) {
+                // Сбрасываем жирный шрифт
+                QFont itemFont = item->font();
+                itemFont.setBold(false);
+                item->setFont(itemFont);
+                
+                // Сбрасываем цвет фона на стандартный
+                if (_table->alternatingRowColors()) {
+                    // Восстанавливаем чередование цветов строк
+                    if (i % 2 == 0) {
+                        item->setBackground(QColor(255, 255, 255)); // Белый
+                    } else {
+                        item->setBackground(QColor(240, 240, 240)); // Светло-серый
+                    }
+                } else {
+                    item->setBackground(QColor(255, 255, 255)); // Белый
+                }
+                
+                // Очищаем тултипы
+                if (col != 5) { // Сохраняем тултипы только для колонки "Тип неисправности"
+                    item->setToolTip("");
+                }
+            }
+        }
+
+        // Теперь применяем правильные цвета
         if (hasFailedTest) {
-            // Red background for failed tests
+            // Красный фон для неудачных тестов (кроме колонки статуса)
             for (int col = 0; col < _table->columnCount(); ++col) {
                 QTableWidgetItem* item = _table->item(int(i), col);
-                if (item && col != 4) { // Don't override status column
+                if (item && col != 4) { // Не перезаписываем статус колонки
                     item->setBackground(QColor(255, 200, 200));
                 }
             }
         } else if (isFaulty && !isTested) {
-            // Yellow for faulty area that hasn't been tested yet
+            // Желтый для неисправной области, которая еще не тестировалась
             for (int col = 0; col < _table->columnCount(); ++col) {
                 QTableWidgetItem* item = _table->item(int(i), col);
-                if (item && col != 4 && col != 5) { // Don't override status and fault type columns
+                if (item && col != 4 && col != 5) { // Не перезаписываем статус и тип неисправности
                     item->setBackground(QColor(255, 240, 200));
                 }
             }
         } else if (!isTested) {
-            // Gray for untested addresses
+            // Серый для непротестированных адресов
             for (int col = 0; col < _table->columnCount(); ++col) {
                 QTableWidgetItem* item = _table->item(int(i), col);
                 if (item && col != 4 && col != 5) {
-                    item->setBackground(QColor(250, 250, 250));
+                    if (i % 2 == 0) {
+                        item->setBackground(QColor(250, 250, 250));
+                    } else {
+                        item->setBackground(QColor(245, 245, 245));
+                    }
                 }
             }
         } else {
-            // Green/white for tested and passed addresses
+            // Зеленый/белый для протестированных и исправных адресов
             for (int col = 0; col < _table->columnCount(); ++col) {
                 QTableWidgetItem* item = _table->item(int(i), col);
                 if (item && col != 4 && col != 5) {
@@ -605,7 +649,6 @@ void MainWindow::scrollToFault() {
 
 void MainWindow::onAlgorithmChanged(int index) {
     Q_UNUSED(index);
-    // TestAlgorithm algo = static_cast<TestAlgorithm>(_algoCombo->currentData().toInt()); // Убрана неиспользуемая переменная
     _currentAlgorithmLabel->setText(QString("Текущий алгоритм: %1").arg(_algoCombo->currentText()));
     updateTestInfo();
 }

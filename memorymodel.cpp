@@ -32,6 +32,13 @@ Word MemoryModel::read(size_t addr) {
     if (!_isAddrFaulty(addr)) 
         return stored_value;
 
+    // Проверяем вероятность для адреса перед применением ошибки
+    std::bernoulli_distribution addrProb(_injected.flip_probability);
+    if (!addrProb(_rng)) {
+        return stored_value; // Вероятность не сработала - читаем нормально
+    }
+
+    // Вероятность сработала - применяем ошибку
     // НЕИСПРАВНОСТИ ПРИМЕНЯЮТСЯ ТОЛЬКО ПРИ ЧТЕНИИ
     switch (_injected.model) {
         case FaultModel::StuckAt0: 
@@ -42,9 +49,9 @@ Word MemoryModel::read(size_t addr) {
             return 0xFFFFFFFFu; // marker for invalid read
         case FaultModel::BitFlip: {
             Word v = stored_value; // Искажаем хранимое значение
-            std::bernoulli_distribution d(_injected.flip_probability);
+            std::bernoulli_distribution bitProb(_injected.flip_probability);
             for (int b = 0; b < 32; ++b) 
-                if (d(_rng)) 
+                if (bitProb(_rng)) 
                     v ^= (1u << b);
             return v;
         }

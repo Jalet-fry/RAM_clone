@@ -1,75 +1,82 @@
 @startuml component_diagram
-!theme plain
+scale 1.5
+skinparam {
+    shadowing false
+    linetype ortho
+    defaultFontSize 10
+    padding 1
+}
 
-title Компонентная диаграмма проекта RAM_clone
+skinparam package {
+    BackgroundColor #F5F5F5
+    BorderColor #666
+}
 
-package "Пользовательский интерфейс" {
-    component [MainWindow] as UI
-    component [TableItemDelegate] as Delegate
+skinparam component {
+    BackgroundColor #FFF
+    BorderColor #333
+}
+
+title Компонентная диаграмма
+
+package "UI" {
+    component MainWindow
+    component TableItemDelegate
 }
 
 package "Бизнес-логика" {
-    component [MemoryModel] as Model
-    component [FaultInjector] as Injector
-    component [MemoryTester] as Tester
+    component MemoryModel
+    component FaultInjector
+    component MemoryTester
 }
 
-package "Управление потоками" {
-    component [TesterWorker] as Worker
-    component [QThread] as Thread
+package "Потоки" {
+    component TesterWorker
 }
 
 package "Контроллеры" {
-    component [FaultController] as FaultCtrl
-    component [TestController] as TestCtrl
-    component [ThemeController] as ThemeCtrl
+    component FaultController
+    component TestController
+    component ThemeController
 }
 
-package "Менеджеры отображения" {
-    component [MemoryTableManager] as TableMgr
-    component [StatisticsManager] as StatsMgr
-    component [ResultsNavigator] as Nav
+package "Менеджеры" {
+    component MemoryTableManager
+    component StatisticsManager
+    component ResultsNavigator
 }
 
-package "Вспомогательные компоненты" {
-    component [Logger] as Log
-    component [DataFormatter] as Formatter
-    component [ThemeManager] as ThemeMgr
+package "Вспомогательные" {
+    component Logger
+    component DataFormatter
+    component ThemeManager
 }
 
-UI --> Model
-UI --> Worker
-UI --> FaultCtrl
-UI --> TestCtrl
-UI --> ThemeCtrl
-UI --> TableMgr
-UI --> StatsMgr
-UI --> Nav
-UI --> Log
+MainWindow --> MemoryModel
+MainWindow --> TesterWorker
+MainWindow --> FaultController
+MainWindow --> TestController
+MainWindow --> ThemeController
+MainWindow --> MemoryTableManager
+MainWindow --> StatisticsManager
+MainWindow --> Logger
 
-Model --> Injector
-Worker --> Thread
-Worker --> Tester
-Tester --> Model
+MemoryModel --> FaultInjector
+TesterWorker --> MemoryTester
+MemoryTester --> MemoryModel
 
-FaultCtrl --> Model
-FaultCtrl --> Log
-TestCtrl --> Worker
-TestCtrl --> Model
-TestCtrl --> TableMgr
-TestCtrl --> Log
+FaultController --> MemoryModel : uses
+FaultController --> Logger : uses
+TestController --> TesterWorker : uses
+TestController --> MemoryModel : uses
+TestController --> MemoryTableManager : uses
 
-TableMgr --> Model
-TableMgr --> Log
-StatsMgr --> Model
-Nav --> Model
-Nav --> Log
+MemoryTableManager --> MemoryModel : uses
+StatisticsManager --> MemoryModel : uses
+ResultsNavigator --> MemoryModel : uses
 
-ThemeCtrl --> ThemeMgr
-ThemeCtrl --> Log
-TableMgr --> ThemeMgr
-StatsMgr --> ThemeMgr
-Delegate --> ThemeMgr
+ThemeController --> ThemeManager : uses
+MemoryTableManager --> ThemeManager : uses
+TableItemDelegate --> ThemeManager : uses
 
 @enduml
-

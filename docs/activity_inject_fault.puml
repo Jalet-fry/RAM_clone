@@ -1,55 +1,38 @@
 @startuml activity_inject_fault
-!theme plain
+scale 1.5
+skinparam {
+    shadowing false
+    linetype ortho
+    defaultFontSize 10
+    padding 1
+}
 
-title Диаграмма активности: Внедрение неисправности
+skinparam activity {
+    BackgroundColor #FFF3E0
+    BorderColor #FF9800
+    FontSize 7
+}
+
+title Внедрение неисправности
 
 start
+:Нажать "Внедрить";
+:Получить параметры:\nмодель, адрес, длина, вероятность;
 
-:Пользователь нажимает\n"Внедрить неисправность";
-
-:Получить модель неисправности\nиз ComboBox;
-
-:Получить адрес\nиз LineEdit;
-
-:Получить длину\nиз LineEdit;
-
-:Получить вероятность\nиз DoubleSpinBox;
-
-if (Валидация ввода?) then (невалидно)
-    :Показать сообщение об ошибке;
-    :Записать в лог;
+if (Валидация\nпараметров?) then (невалидно)
+    :Показать ошибку;
     stop
 endif
 
-if (Адрес >= размер памяти?) then (да)
-    :Показать сообщение об ошибке;
-    :Записать в лог;
-    stop
+if (Адрес + длина > размер?) then (да)
+    :Уменьшить длину;
 endif
 
-if (Адрес + длина > размер памяти?) then (да)
-    :Уменьшить длину до\nразмер памяти - адрес;
-    :Показать предупреждение;
-    :Записать в лог;
-endif
-
-:Создать InjectedFault:\nmodel, addr, len, flip_probability;
-
-:Вызвать MemoryModel.injectFault();
-
-:MemoryModel передает\nнеисправность в FaultInjector;
-
-:FaultInjector сохраняет\nнеисправность;
-
-:Отправить сигнал faultInjected();
-
-:Обновить таблицу памяти;
-
-:Обновить статистику;
-
-:Записать в лог:\n"Внедрена неисправность";
-
+:Создать InjectedFault;
+:MemoryModel.injectFault();
+:FaultInjector сохраняет;
+:Отправить faultInjected();
+:Обновить UI;
 stop
 
 @enduml
-

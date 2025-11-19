@@ -1,50 +1,48 @@
 @startuml walking_ones_algorithm
-!theme plain
+scale 1.5
+skinparam {
+    shadowing false
+    linetype ortho
+    defaultFontSize 10
+    padding 1
+}
+
+skinparam activity {
+    BackgroundColor #E8F5E9
+    BorderColor #4CAF50
+    FontSize 7
+}
 
 title Алгоритм Walking 1s
 
 start
+:Инициализация;
 
-:Инициализация:\nОчистка результатов\nПолучение размера памяти;
-
-if (Размер памяти > 0?) then (нет)
-    :Установить прогресс 100%;
-    :Отправить пустые результаты;
+if (Размер > 0?) then (нет)
     stop
 endif
 
-:Фаза 1: Запись паттернов;
-
+:Фаза 1: Запись;
 repeat
-    :Для адреса a от 0 до n-1;
-    :Вычислить паттерн:\npattern = 1u << (a % 32);
-    :Записать pattern в адрес a\nwriteDirect(a, pattern);
-    :Обновить прогресс:\nbasePercent = 0%\nphasePercent = 50%;
+    :pattern = 1u << (a % 32);
+    :writeDirect(a, pattern);
+    :Обновить прогресс (0-50%);
 repeat while (a < n-1?)
 
-:Фаза 2: Чтение и проверка;
-
+:Фаза 2: Чтение;
 repeat
-    :Для адреса a от 0 до n-1;
-    :Вычислить ожидаемое значение:\nexpected = 1u << (a % 32);
-    :Прочитать значение из адреса a\nread(a);
-    :Применить неисправность\nесли она внедрена;
+    :expected = 1u << (a % 32);
+    :read(a);
     if (read == expected?) then (да)
         :passed = true;
     else (нет)
         :passed = false;
     endif
-    :Сохранить результат:\nTestResult(a, expected, read, passed);
-    :Обновить прогресс:\nbasePercent = 50%\nphasePercent = 50%;
-    if (a % 10 == 0?) then (да)
-        :Отправить детали прогресса;
-    endif
+    :Сохранить результат;
+    :Обновить прогресс (50-100%);
 repeat while (a < n-1?)
 
-:Установить прогресс 100%;
 :Отправить результаты;
-
 stop
 
 @enduml
-

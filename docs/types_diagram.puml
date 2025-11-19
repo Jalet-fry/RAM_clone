@@ -1,5 +1,21 @@
 @startuml types_diagram
-!theme plain
+scale 1.5
+skinparam {
+    shadowing false
+    linetype ortho
+    defaultFontSize 10
+    padding 1
+}
+
+skinparam enum {
+    BackgroundColor #E8F5E9
+    BorderColor #4CAF50
+}
+
+skinparam class {
+    BackgroundColor #FFF3E0
+    BorderColor #FF9800
+}
 
 title Диаграмма типов данных
 
@@ -25,47 +41,33 @@ enum Theme {
 }
 
 class InjectedFault {
-    +FaultModel model
-    +size_t addr
-    +size_t len
-    +double flip_probability
+    +model: FaultModel
+    +addr: size_t
+    +len: size_t
+    +flip_probability: double
 }
 
 class TestResult {
-    +size_t addr
-    +Word expected
-    +Word read
-    +bool passed
+    +addr: size_t
+    +expected: Word
+    +read: Word
+    +passed: bool
 }
 
 class ThemeColors {
-    +QColor bgPrimary
-    +QColor bgSecondary
-    +QColor text
-    +QColor accent
-    +QColor accentLight
-    +QColor border
-    +QColor tableBgEven
-    +QColor tableBgOdd
-    +QColor tableText
-    +QColor failedTestBg
-    +QColor failedTestText
-    +QColor passedTestBg
-    +QColor passedTestText
-    +QColor faultyNotTestedBg
-    +QColor faultyNotTestedText
-    +QColor untestedBgEven
-    +QColor untestedBgOdd
-    +QColor statusPassedBg
-    +QColor statusPassedText
-    +QColor statusFailedBg
-    +QColor statusFailedText
-    +QColor statusUntestedBg
-    +QColor statusUntestedText
-    +QColor logInfo
-    +QColor logWarning
-    +QColor logError
-    +QColor logSuccess
+    +bgPrimary: QColor
+    +bgSecondary: QColor
+    +text: QColor
+    +accent: QColor
+    +tableBgEven: QColor
+    +tableBgOdd: QColor
+    +failedTestBg: QColor
+    +passedTestBg: QColor
+}
+
+class Word {
+    <<typedef>>
+    +value: uint32_t
 }
 
 note right of Word : typedef uint32_t
@@ -75,4 +77,3 @@ TestResult --> Word
 ThemeColors --> Theme
 
 @enduml
-

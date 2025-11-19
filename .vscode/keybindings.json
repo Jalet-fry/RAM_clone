@@ -1,0 +1,13 @@
+[
+    {
+        "key": "ctrl+alt+e",
+        "command": "plantuml.exportCurrentDiagram",
+        "when": "editorLangId == 'plantuml'"
+    },
+    {
+        "key": "ctrl+shift+e",
+        "command": "plantuml.exportCurrentDiagramAs",
+        "when": "editorLangId == 'plantuml'"
+    }
+]
+

@@ -1,26 +1,30 @@
 @startuml test_progress_update
-!theme plain
+scale 1.5
+skinparam {
+    shadowing false
+    linetype ortho
+    defaultFontSize 10
+    padding 1
+}
 
-title Обновление прогресса тестирования
+skinparam activity {
+    BackgroundColor #E3F2FD
+    BorderColor #2196F3
+    FontSize 7
+}
+
+title Обновление прогресса
 
 start
-
 :Обработка адреса;
 
-if (Адрес % 10 == 0\nили\nпоследний адрес?) then (нет)
-    :Пропустить обновление;
+if (Адрес % 10 == 0?) then (нет)
     stop
 endif
 
-:Вычислить процент:\nbasePercent +\n(current * phasePercent) / total;
-
-:Отправить сигнал\nprogress(percent);
-
-:Задержка 60 мс\nдля визуализации;
-
-:Продолжить выполнение;
-
+:Вычислить процент:\nbasePercent + (current * phasePercent) / total;
+:Отправить progress(percent);
+:Задержка 60 мс;
 stop
 
 @enduml
-

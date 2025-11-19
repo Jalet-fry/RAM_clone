@@ -1,0 +1,6 @@
+{
+    "plantuml.exportFormat": "png",
+    "plantuml.exportOutDir": "",
+    "plantuml.previewAutoUpdate": true,
+    "plantuml.server": "http://www.plantuml.com/plantuml"
+}

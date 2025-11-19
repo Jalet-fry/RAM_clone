@@ -1,52 +1,45 @@
 @startuml fault_application
-!theme plain
+scale 1.5
+skinparam {
+    shadowing false
+    linetype ortho
+    defaultFontSize 10
+    padding 1
+}
 
-title Применение неисправностей при чтении
+skinparam activity {
+    BackgroundColor #FFEBEE
+    BorderColor #F44336
+    FontSize 7
+}
+
+title Применение неисправностей
 
 start
-
 :Чтение адреса;
 
 if (Адрес в области\nнеисправности?) then (нет)
-    :Вернуть\nоригинальное значение;
+    :Вернуть оригинальное значение;
     stop
 endif
 
-:Адрес в области неисправности;
-
-switch (Модель неисправности?)
+switch (Модель?)
 case (BitFlip)
-    :Для каждого бита:\nС вероятностью flip_probability\nинвертировать бит;
-    :Вернуть модифицированное значение;
+    :Инвертировать биты\nс вероятностью flip_prob;
 case (StuckAt0)
-    if (С вероятностью flip_probability?) then (да)
-        :Вернуть 0x00000000;
-    else (нет)
-        :Вернуть оригинальное значение;
-    endif
+    :Вернуть 0x00000000\nс вероятностью flip_prob;
 case (StuckAt1)
-    if (С вероятностью flip_probability?) then (да)
-        :Вернуть 0xFFFFFFFF;
-    else (нет)
-        :Вернуть оригинальное значение;
-    endif
+    :Вернуть 0xFFFFFFFF\nс вероятностью flip_prob;
 case (OpenRead)
-    if (С вероятностью flip_probability?) then (да)
-        :Вернуть 0xFFFFFFFF\n(маркер невалидного чтения);
-    else (нет)
-        :Вернуть оригинальное значение;
-    endif
+    :Вернуть 0xFFFFFFFF;
 endswitch
 
+:Вернуть модифицированное значение;
 stop
 
 note right
-  **Важно:**
   Неисправности применяются
-  ТОЛЬКО при чтении.
-  Запись всегда сохраняет
-  точное значение.
+  ТОЛЬКО при чтении
 end note
 
 @enduml
-

@@ -1,44 +1,43 @@
 @startuml algorithm_comparison
-!theme plain
+scale 1.5
+skinparam {
+    shadowing false
+    linetype ortho
+    defaultFontSize 10
+    padding 1
+}
 
-title Сравнение алгоритмов тестирования
+title Сравнение алгоритмов
 
-package "Walking 1s" {
+package "Walking 1s" #E8F5E9 {
     object WalkingOnes {
-        Фазы = 2
-        Операций записи = n
-        Операций чтения = n
-        Всего операций = 2n
-        Покрытие битов = Каждый бит по отдельности
+        Фазы: 2
+        Операций: 2n
+        Покрытие: Каждый бит
     }
 }
 
-package "Walking 0s" {
+package "Walking 0s" #E8F5E9 {
     object WalkingZeros {
-        Фазы = 2
-        Операций записи = n
-        Операций чтения = n
-        Всего операций = 2n
-        Покрытие битов = Каждый бит по отдельности
+        Фазы: 2
+        Операций: 2n
+        Покрытие: Каждый бит
     }
 }
 
-package "March Simple" {
+package "March Simple" #E8F5E9 {
     object MarchSimple {
-        Фазы = 4
-        Операций записи = 2n
-        Операций чтения = 2n
-        Всего операций = 4n
-        Покрытие битов = Все биты одновременно
+        Фазы: 4
+        Операций: 4n
+        Покрытие: Все биты
     }
 }
 
-package "Обнаружение неисправностей" {
+package "Обнаружение" #FFF3E0 {
     object Detection {
-        StuckAt0 = Все алгоритмы
-        StuckAt1 = Все алгоритмы
-        BitFlip = Walking 1s/0s (полное)\nMarch Simple (частичное)
-        OpenRead = Все алгоритмы
+        StuckAt0/1: Все
+        BitFlip: Walking (полное)\nMarch (частичное)
+        OpenRead: Все
     }
 }
 
@@ -46,28 +45,4 @@ WalkingOnes ..> Detection
 WalkingZeros ..> Detection
 MarchSimple ..> Detection
 
-note right of WalkingOnes
-  **Преимущества:**
-  - Хорошее покрытие битов
-  - Средняя скорость
-  - Обнаруживает все типы неисправностей
-end note
-
-note right of WalkingZeros
-  **Преимущества:**
-  - Хорошее покрытие битов
-  - Средняя скорость
-  - Обнаруживает все типы неисправностей
-end note
-
-note right of MarchSimple
-  **Преимущества:**
-  - Простой алгоритм
-  - Хорошо обнаруживает Stuck-at
-  **Недостатки:**
-  - Медленнее других
-  - Частичное обнаружение Bit-flip
-end note
-
 @enduml
-

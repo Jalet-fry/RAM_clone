@@ -17,6 +17,7 @@
 #include "memorymodel.h"
 #include "testerworker.h"
 #include "thememanager.h"
+#include "tableitemdelegate.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -88,6 +89,7 @@ private:
     QLabel* _currentAlgorithmLabel;
 
     QTableWidget* _table;
+    TableItemDelegate* _tableDelegate;
     QTextEdit* _log;
     QLineEdit* _searchEdit;
     QPushButton* _searchBtn;

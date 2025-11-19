@@ -191,7 +191,9 @@ MainWindow::MainWindow(QWidget* parent)
     _table->setSortingEnabled(false);
     _table->horizontalHeader()->setStretchLastSection(true);
     // Устанавливаем кастомный делегат для правильной отрисовки красного выделения
-    _table->setItemDelegate(new TableItemDelegate(this));
+    _tableDelegate = new TableItemDelegate(this);
+    _tableDelegate->setTheme(Theme::DeusEx); // Устанавливаем начальную тему
+    _table->setItemDelegate(_tableDelegate);
     memoryLayout->addWidget(_table);
 
     bottomSplitter->addWidget(memoryWidget);
@@ -1122,6 +1124,11 @@ void MainWindow::applyTheme(Theme theme) {
     
     // Apply stylesheet to main window
     setStyleSheet(getThemeStylesheet(theme));
+    
+    // Update table delegate theme
+    if (_tableDelegate) {
+        _tableDelegate->setTheme(theme);
+    }
     
     // Update fault info label with theme-specific colors
     updateFaultInfo();

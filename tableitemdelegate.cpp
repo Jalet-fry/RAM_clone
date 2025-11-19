@@ -1,4 +1,5 @@
 #include "tableitemdelegate.h"
+#include "thememanager.h"
 #include <QPainter>
 #include <QStyleOptionViewItem>
 #include <QModelIndex>
@@ -6,7 +7,11 @@
 #include <QBrush>
 
 TableItemDelegate::TableItemDelegate(QObject* parent)
-    : QStyledItemDelegate(parent) {
+    : QStyledItemDelegate(parent), _theme(Theme::DeusEx) {
+}
+
+void TableItemDelegate::setTheme(Theme theme) {
+    _theme = theme;
 }
 
 void TableItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const {
@@ -32,12 +37,15 @@ void TableItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opt
             textColor = fgBrush.color();
         }
         
-        // Если цвета не найдены, используем значения по умолчанию
-        if (!bgColor.isValid()) {
-            bgColor = QColor(200, 50, 50); // Красный по умолчанию
-        }
-        if (!textColor.isValid()) {
-            textColor = QColor(255, 255, 255); // Белый по умолчанию
+        // Если цвета не найдены, используем значения по умолчанию из ThemeManager
+        if (!bgColor.isValid() || !textColor.isValid()) {
+            ThemeColors colors = ThemeManager::getColors(_theme);
+            if (!bgColor.isValid()) {
+                bgColor = colors.failedTestBg;
+            }
+            if (!textColor.isValid()) {
+                textColor = colors.failedTestText;
+            }
         }
         
         // Создаем опцию стиля с кастомными цветами

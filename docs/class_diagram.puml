@@ -1,0 +1,226 @@
+@startuml class_diagram
+!theme plain
+skinparam classAttributeIconSize 0
+
+title Диаграмма классов проекта RAM_clone
+
+package "Основные компоненты" {
+    class MainWindow {
+        -MemoryModel* _mem
+        -unique_ptr~TesterWorker~ _worker
+        -unique_ptr~Logger~ _logger
+        -unique_ptr~MemoryTableManager~ _tableManager
+        -unique_ptr~StatisticsManager~ _statisticsManager
+        -unique_ptr~FaultController~ _faultController
+        -unique_ptr~TestController~ _testController
+        -unique_ptr~ResultsNavigator~ _resultsNavigator
+        -unique_ptr~ThemeController~ _themeController
+        +MainWindow(parent)
+        +~MainWindow()
+        -onTableDataChanged(begin, end)
+        -onFaultInjected()
+        -onMemoryReset()
+        -onTestStarted()
+        -onTestFinished(results)
+        -onThemeChanged(theme)
+    }
+
+    class MemoryModel {
+        -QMutex _mutex
+        -vector~Word~ _words
+        -unique_ptr~FaultInjector~ _faultInjector
+        +size() size_t
+        +reset()
+        +read(addr) Word
+        +write(addr, value)
+        +writeDirect(addr, value)
+        +injectFault(fault)
+        +currentFault() InjectedFault
+        +dataChanged(begin, end)$
+        +faultInjected()$
+        +errorOccurred(message)$
+    }
+
+    class FaultInjector {
+        -QMutex _mutex
+        -InjectedFault _injected
+        +injectFault(fault)
+        +currentFault() InjectedFault
+        +reset()
+        +applyFault(addr, value) Word
+        +isAddrFaulty(addr) bool
+        -_isAddrFaultyUnlocked(addr) bool
+        -getRNG() mt19937&
+    }
+
+    class MemoryTester {
+        -MemoryModel* _mem
+        -vector~TestResult~ _results
+        +runTest(algo)
+        -writePattern(addr, pattern)
+        -readAndVerify(addr, expected)
+        -updateProgress(current, total, phasePercent, basePercent)
+        +progress(percent)$
+        +progressDetail(addr, expected, read)$
+        +finished(results)$
+    }
+
+    class TesterWorker {
+        -QThread _thread
+        -MemoryModel* _mem
+        -unique_ptr~MemoryTester~ _tester
+        +initialize()
+        +run(algo)
+        +progress(percent)$
+        +progressDetail(addr, expected, read)$
+        +finished(results)$
+    }
+}
+
+package "Контроллеры" {
+    class FaultController {
+        -MemoryModel* _mem
+        -Logger* _logger
+        -QComboBox* _faultCombo
+        -QLineEdit* _addrEdit
+        -QLineEdit* _lenEdit
+        -QDoubleSpinBox* _flipProbSpin
+        +injectFault()
+        +resetMemory()
+        +onFaultModelChanged(index)
+        -validateInput(addr, len) bool
+        +faultInjected()$
+        +memoryReset()$
+    }
+
+    class TestController {
+        -TesterWorker* _worker
+        -MemoryModel* _mem
+        -MemoryTableManager* _tableManager
+        -Logger* _logger
+        -bool _testRunning
+        -QTime _testStartTime
+        -int _lastTestTimeMsecs
+        +startTest()
+        +onTestFinished(results)
+        +onAlgorithmChanged(index)
+        +updateProgressDetails(addr, expected, read)
+        +testStarted()$
+        +testFinished(results)$
+        +testResultsUpdated(results)$
+    }
+
+    class ThemeController {
+        -QMainWindow* _mainWindow
+        -QTextEdit* _logWidget
+        -Logger* _logger
+        -Theme _currentTheme
+        -QActionGroup* _themeGroup
+        +applyTheme(theme)
+        +onThemeChanged()
+        +themeChanged(theme)$
+    }
+}
+
+package "Менеджеры" {
+    class MemoryTableManager {
+        -QTableWidget* _table
+        -MemoryModel* _mem
+        -Logger* _logger
+        -Theme _currentTheme
+        -vector~TestResult~ _lastResults
+        +setTestResults(results)
+        +clearTestResults()
+        +setTheme(theme)
+        +refreshTable(begin, end)
+        +highlightAddress(addr)
+        +updateProgressHighlight(addr, lastAddr)
+    }
+
+    class StatisticsManager {
+        -MemoryModel* _mem
+        -vector~TestResult~ _lastResults
+        -Theme _currentTheme
+        -int _testTimeMsecs
+        -QLabel* _totalAddressesLabel
+        -QLabel* _testedAddressesLabel
+        -QLabel* _faultsFoundLabel
+        -QLabel* _coverageLabel
+        +setTestResults(results)
+        +clearTestResults()
+        +setTestTime(msecs)
+        +setTheme(theme)
+        +updateStatistics()
+        +updateFaultInfo()
+    }
+
+    class ResultsNavigator {
+        -QTableWidget* _table
+        -MemoryModel* _mem
+        -Logger* _logger
+        +scrollToNextFault(results, currentAddr)
+    }
+}
+
+package "Вспомогательные классы" {
+    class Logger {
+        -QTextEdit* _log
+        -Theme _theme
+        +setTheme(theme)
+        +info(message)
+        +warning(message)
+        +error(message)
+        +success(message)
+        +clear()
+    }
+
+    class DataFormatter {
+        +{static} formatBinary(value) QString
+        +{static} getFaultModelName(model) QString
+        +{static} getAlgorithmDescription(algo) QString
+    }
+
+    class ThemeManager {
+        +{static} getColors(theme) ThemeColors
+        +{static} getStylesheet(theme) QString
+    }
+
+    class TableItemDelegate {
+        -Theme _theme
+        +setTheme(theme)
+        +paint(painter, option, index)
+    }
+}
+
+' Отношения владения
+MainWindow *-- MemoryModel : owns
+MainWindow *-- TesterWorker : owns
+MainWindow *-- Logger : owns
+MainWindow *-- MemoryTableManager : owns
+MainWindow *-- StatisticsManager : owns
+MainWindow *-- FaultController : owns
+MainWindow *-- TestController : owns
+MainWindow *-- ResultsNavigator : owns
+MainWindow *-- ThemeController : owns
+
+MemoryModel *-- FaultInjector : owns
+TesterWorker *-- MemoryTester : owns
+
+' Отношения использования
+TesterWorker --> MemoryModel : uses
+MemoryTester --> MemoryModel : uses
+FaultController --> MemoryModel : uses
+FaultController --> Logger : uses
+TestController --> TesterWorker : uses
+TestController --> MemoryModel : uses
+TestController --> MemoryTableManager : uses
+TestController --> Logger : uses
+MemoryTableManager --> MemoryModel : uses
+MemoryTableManager --> Logger : uses
+StatisticsManager --> MemoryModel : uses
+ResultsNavigator --> MemoryModel : uses
+ResultsNavigator --> Logger : uses
+ThemeController --> Logger : uses
+
+@enduml
+

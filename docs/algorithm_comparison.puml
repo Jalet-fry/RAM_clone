@@ -1,0 +1,73 @@
+@startuml algorithm_comparison
+!theme plain
+
+title Сравнение алгоритмов тестирования
+
+package "Walking 1s" {
+    object WalkingOnes {
+        Фазы = 2
+        Операций записи = n
+        Операций чтения = n
+        Всего операций = 2n
+        Покрытие битов = Каждый бит по отдельности
+    }
+}
+
+package "Walking 0s" {
+    object WalkingZeros {
+        Фазы = 2
+        Операций записи = n
+        Операций чтения = n
+        Всего операций = 2n
+        Покрытие битов = Каждый бит по отдельности
+    }
+}
+
+package "March Simple" {
+    object MarchSimple {
+        Фазы = 4
+        Операций записи = 2n
+        Операций чтения = 2n
+        Всего операций = 4n
+        Покрытие битов = Все биты одновременно
+    }
+}
+
+package "Обнаружение неисправностей" {
+    object Detection {
+        StuckAt0 = Все алгоритмы
+        StuckAt1 = Все алгоритмы
+        BitFlip = Walking 1s/0s (полное)\nMarch Simple (частичное)
+        OpenRead = Все алгоритмы
+    }
+}
+
+WalkingOnes ..> Detection
+WalkingZeros ..> Detection
+MarchSimple ..> Detection
+
+note right of WalkingOnes
+  **Преимущества:**
+  - Хорошее покрытие битов
+  - Средняя скорость
+  - Обнаруживает все типы неисправностей
+end note
+
+note right of WalkingZeros
+  **Преимущества:**
+  - Хорошее покрытие битов
+  - Средняя скорость
+  - Обнаруживает все типы неисправностей
+end note
+
+note right of MarchSimple
+  **Преимущества:**
+  - Простой алгоритм
+  - Хорошо обнаруживает Stuck-at
+  **Недостатки:**
+  - Медленнее других
+  - Частичное обнаружение Bit-flip
+end note
+
+@enduml
+

@@ -1,0 +1,74 @@
+@startuml march_simple_algorithm
+!theme plain
+
+title Алгоритм March Simple
+
+start
+
+:Инициализация:\nОчистка результатов\nПолучение размера памяти;
+
+if (Размер памяти > 0?) then (нет)
+    :Установить прогресс 100%;
+    :Отправить пустые результаты;
+    stop
+endif
+
+:Шаг 1: Запись всех 0;
+
+repeat
+    :Для адреса a от 0 до n-1;
+    :Записать 0 в адрес a\nwriteDirect(a, 0);
+    :Обновить прогресс:\nbasePercent = 0%\nphasePercent = 25%;
+repeat while (a < n-1?)
+
+:Шаг 2: Чтение всех 0;
+
+repeat
+    :Для адреса a от 0 до n-1;
+    :Прочитать значение из адреса a\nread(a);
+    :Применить неисправность\nесли она внедрена;
+    if (read == 0?) then (да)
+        :passed = true;
+    else (нет)
+        :passed = false;
+    endif
+    :Сохранить результат:\nTestResult(a, 0, read, passed);
+    :Обновить прогресс:\nbasePercent = 25%\nphasePercent = 25%;
+    if (a % 10 == 0?) then (да)
+        :Отправить детали прогресса;
+    endif
+repeat while (a < n-1?)
+
+:Шаг 3: Запись всех 1;
+
+repeat
+    :Для адреса a от 0 до n-1;
+    :Записать ~0 в адрес a\nwriteDirect(a, ~0);
+    :Обновить прогресс:\nbasePercent = 50%\nphasePercent = 25%;
+repeat while (a < n-1?)
+
+:Шаг 4: Чтение всех 1;
+
+repeat
+    :Для адреса a от 0 до n-1;
+    :Прочитать значение из адреса a\nread(a);
+    :Применить неисправность\nесли она внедрена;
+    if (read == ~0?) then (да)
+        :passed = true;
+    else (нет)
+        :passed = false;
+    endif
+    :Сохранить результат:\nTestResult(a, ~0, read, passed);
+    :Обновить прогресс:\nbasePercent = 75%\nphasePercent = 25%;
+    if (a % 10 == 0?) then (да)
+        :Отправить детали прогресса;
+    endif
+repeat while (a < n-1?)
+
+:Установить прогресс 100%;
+:Отправить результаты;
+
+stop
+
+@enduml
+

@@ -1,0 +1,75 @@
+@startuml component_diagram
+!theme plain
+
+title Компонентная диаграмма проекта RAM_clone
+
+package "Пользовательский интерфейс" {
+    component [MainWindow] as UI
+    component [TableItemDelegate] as Delegate
+}
+
+package "Бизнес-логика" {
+    component [MemoryModel] as Model
+    component [FaultInjector] as Injector
+    component [MemoryTester] as Tester
+}
+
+package "Управление потоками" {
+    component [TesterWorker] as Worker
+    component [QThread] as Thread
+}
+
+package "Контроллеры" {
+    component [FaultController] as FaultCtrl
+    component [TestController] as TestCtrl
+    component [ThemeController] as ThemeCtrl
+}
+
+package "Менеджеры отображения" {
+    component [MemoryTableManager] as TableMgr
+    component [StatisticsManager] as StatsMgr
+    component [ResultsNavigator] as Nav
+}
+
+package "Вспомогательные компоненты" {
+    component [Logger] as Log
+    component [DataFormatter] as Formatter
+    component [ThemeManager] as ThemeMgr
+}
+
+UI --> Model
+UI --> Worker
+UI --> FaultCtrl
+UI --> TestCtrl
+UI --> ThemeCtrl
+UI --> TableMgr
+UI --> StatsMgr
+UI --> Nav
+UI --> Log
+
+Model --> Injector
+Worker --> Thread
+Worker --> Tester
+Tester --> Model
+
+FaultCtrl --> Model
+FaultCtrl --> Log
+TestCtrl --> Worker
+TestCtrl --> Model
+TestCtrl --> TableMgr
+TestCtrl --> Log
+
+TableMgr --> Model
+TableMgr --> Log
+StatsMgr --> Model
+Nav --> Model
+Nav --> Log
+
+ThemeCtrl --> ThemeMgr
+ThemeCtrl --> Log
+TableMgr --> ThemeMgr
+StatsMgr --> ThemeMgr
+Delegate --> ThemeMgr
+
+@enduml
+

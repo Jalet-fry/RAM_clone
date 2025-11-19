@@ -1,0 +1,75 @@
+@startuml sequence_test_execution
+!theme plain
+
+title Последовательность выполнения теста
+
+actor User as "Пользователь"
+participant "MainWindow\n(UI Thread)" as UI
+participant "TestController" as TC
+participant "TesterWorker\n(Worker Thread)" as TW
+participant "MemoryTester" as MT
+participant "MemoryModel" as MM
+participant "FaultInjector" as FI
+
+User -> UI: Нажать "Запустить тест"
+UI -> TC: startTest()
+activate TC
+TC -> TC: Проверить состояние
+TC -> TW: run(algo) [QueuedConnection]
+activate TW
+TC -> UI: testStarted()
+deactivate TC
+
+TW -> MT: runTest(algo)
+activate MT
+
+loop Для каждого адреса
+    MT -> MM: writeDirect(addr, pattern)
+    activate MM
+    MM -> MM: Заблокировать мьютекс
+    MM -> MM: Записать значение
+    MM -> MM: Разблокировать мьютекс
+    MM --> MT: success
+    deactivate MM
+    
+    MT -> MT: updateProgress()
+    MT -> TW: progress(percent) [DirectConnection]
+    TW -> TC: progress(percent) [QueuedConnection]
+    TC -> UI: Обновить progressBar
+    
+    MT -> MM: read(addr)
+    activate MM
+    MM -> MM: Заблокировать мьютекс
+    MM -> MM: Прочитать значение
+    MM -> MM: Разблокировать мьютекс
+    MM -> FI: applyFault(addr, value)
+    activate FI
+    FI -> FI: Проверить область неисправности
+    FI -> FI: Применить модель неисправности
+    FI --> MM: modified_value
+    deactivate FI
+    MM --> MT: value (with fault)
+    deactivate MM
+    
+    MT -> MT: readAndVerify()
+    MT -> MT: Сохранить результат
+    MT -> TW: progressDetail(addr, expected, read) [DirectConnection]
+    TW -> TC: progressDetail(...) [QueuedConnection]
+    TC -> UI: Обновить детали прогресса
+end
+
+MT -> TW: finished(results) [DirectConnection]
+deactivate MT
+TW -> TC: finished(results) [QueuedConnection]
+deactivate TW
+activate TC
+TC -> TC: Вычислить статистику
+TC -> UI: onTestFinished(results)
+deactivate TC
+activate UI
+UI -> UI: Обновить таблицу
+UI -> UI: Обновить статистику
+deactivate UI
+
+@enduml
+

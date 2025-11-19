@@ -1,0 +1,26 @@
+@startuml test_progress_update
+!theme plain
+
+title Обновление прогресса тестирования
+
+start
+
+:Обработка адреса;
+
+if (Адрес % 10 == 0\nили\nпоследний адрес?) then (нет)
+    :Пропустить обновление;
+    stop
+endif
+
+:Вычислить процент:\nbasePercent +\n(current * phasePercent) / total;
+
+:Отправить сигнал\nprogress(percent);
+
+:Задержка 60 мс\nдля визуализации;
+
+:Продолжить выполнение;
+
+stop
+
+@enduml
+

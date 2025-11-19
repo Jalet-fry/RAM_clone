@@ -1,0 +1,62 @@
+@startuml usecase_diagram
+!theme plain
+
+left to right direction
+
+title Use Case диаграмма проекта RAM_clone
+
+actor "Пользователь" as User
+
+rectangle "Управление неисправностями" {
+    usecase "Внедрить неисправность" as UC1
+    usecase "Сбросить память" as UC2
+    usecase "Выбрать модель неисправности" as UC3
+    usecase "Настроить параметры неисправности" as UC4
+}
+
+rectangle "Тестирование памяти" {
+    usecase "Запустить тест" as UC5
+    usecase "Выбрать алгоритм тестирования" as UC6
+    usecase "Просмотреть прогресс теста" as UC7
+    usecase "Просмотреть результаты теста" as UC8
+}
+
+rectangle "Навигация и поиск" {
+    usecase "Найти адрес в таблице" as UC9
+    usecase "Перейти к следующей неисправности" as UC10
+    usecase "Просмотреть детали неисправности" as UC11
+}
+
+rectangle "Визуализация" {
+    usecase "Просмотреть таблицу памяти" as UC12
+    usecase "Просмотреть статистику" as UC13
+    usecase "Просмотреть журнал событий" as UC14
+    usecase "Изменить тему интерфейса" as UC15
+}
+
+User --> UC1
+User --> UC2
+User --> UC3
+User --> UC4
+User --> UC5
+User --> UC6
+User --> UC7
+User --> UC8
+User --> UC9
+User --> UC10
+User --> UC11
+User --> UC12
+User --> UC13
+User --> UC14
+User --> UC15
+
+UC1 ..> UC3 : <<include>>
+UC1 ..> UC4 : <<include>>
+UC5 ..> UC6 : <<include>>
+UC5 ..> UC7 : <<include>>
+UC5 ..> UC8 : <<include>>
+UC8 ..> UC10 : <<extend>>
+UC8 ..> UC11 : <<extend>>
+
+@enduml
+

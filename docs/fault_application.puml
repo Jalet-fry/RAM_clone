@@ -1,0 +1,52 @@
+@startuml fault_application
+!theme plain
+
+title Применение неисправностей при чтении
+
+start
+
+:Чтение адреса;
+
+if (Адрес в области\nнеисправности?) then (нет)
+    :Вернуть\nоригинальное значение;
+    stop
+endif
+
+:Адрес в области неисправности;
+
+switch (Модель неисправности?)
+case (BitFlip)
+    :Для каждого бита:\nС вероятностью flip_probability\nинвертировать бит;
+    :Вернуть модифицированное значение;
+case (StuckAt0)
+    if (С вероятностью flip_probability?) then (да)
+        :Вернуть 0x00000000;
+    else (нет)
+        :Вернуть оригинальное значение;
+    endif
+case (StuckAt1)
+    if (С вероятностью flip_probability?) then (да)
+        :Вернуть 0xFFFFFFFF;
+    else (нет)
+        :Вернуть оригинальное значение;
+    endif
+case (OpenRead)
+    if (С вероятностью flip_probability?) then (да)
+        :Вернуть 0xFFFFFFFF\n(маркер невалидного чтения);
+    else (нет)
+        :Вернуть оригинальное значение;
+    endif
+endswitch
+
+stop
+
+note right
+  **Важно:**
+  Неисправности применяются
+  ТОЛЬКО при чтении.
+  Запись всегда сохраняет
+  точное значение.
+end note
+
+@enduml
+

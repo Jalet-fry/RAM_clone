@@ -1,0 +1,78 @@
+@startuml types_diagram
+!theme plain
+
+title Диаграмма типов данных
+
+enum FaultModel {
+    None
+    StuckAt0
+    StuckAt1
+    BitFlip
+    OpenRead
+}
+
+enum TestAlgorithm {
+    WalkingOnes
+    WalkingZeros
+    MarchSimple
+}
+
+enum Theme {
+    DeusEx
+    Matrix
+    GurrenLagann
+    Cyberpunk
+}
+
+class InjectedFault {
+    +FaultModel model
+    +size_t addr
+    +size_t len
+    +double flip_probability
+}
+
+class TestResult {
+    +size_t addr
+    +Word expected
+    +Word read
+    +bool passed
+}
+
+class ThemeColors {
+    +QColor bgPrimary
+    +QColor bgSecondary
+    +QColor text
+    +QColor accent
+    +QColor accentLight
+    +QColor border
+    +QColor tableBgEven
+    +QColor tableBgOdd
+    +QColor tableText
+    +QColor failedTestBg
+    +QColor failedTestText
+    +QColor passedTestBg
+    +QColor passedTestText
+    +QColor faultyNotTestedBg
+    +QColor faultyNotTestedText
+    +QColor untestedBgEven
+    +QColor untestedBgOdd
+    +QColor statusPassedBg
+    +QColor statusPassedText
+    +QColor statusFailedBg
+    +QColor statusFailedText
+    +QColor statusUntestedBg
+    +QColor statusUntestedText
+    +QColor logInfo
+    +QColor logWarning
+    +QColor logError
+    +QColor logSuccess
+}
+
+note right of Word : typedef uint32_t
+
+InjectedFault --> FaultModel
+TestResult --> Word
+ThemeColors --> Theme
+
+@enduml
+

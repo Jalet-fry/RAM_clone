@@ -29,14 +29,14 @@ ThemeColors ThemeManager::getColors(Theme theme) {
         
         // Цвета для статуса
         colors.statusPassedBg = QColor(100, 150, 100);
-        colors.statusPassedText = QColor(255, 255, 255);
+        colors.statusPassedText = QColor(212, 175, 55);  // Золотистый (accent цвет) вместо белого
         colors.statusFailedBg = QColor(200, 50, 50);
         colors.statusFailedText = QColor(255, 255, 255);
         colors.statusUntestedBg = QColor(45, 45, 45);
         colors.statusUntestedText = QColor(212, 175, 55);  // Золотистый (accent цвет) вместо белого
         
         // Цвета для логов
-        colors.logInfo = QColor(224, 224, 224);
+        colors.logInfo = QColor(212, 175, 55);  // Золотистый (accent цвет) вместо светло-серого
         colors.logWarning = QColor(244, 208, 63);
         colors.logError = QColor(255, 100, 100);
         colors.logSuccess = QColor(100, 255, 100);
@@ -118,6 +118,19 @@ QString ThemeManager::getStylesheet(Theme theme) {
             "QTextEdit { background-color: #0a0a0a; color: %2; border: 2px solid %4; border-radius: 4px; } "
             "QProgressBar { background-color: %3; color: %2; border: 2px solid %4; border-radius: 4px; text-align: center; } "
             "QProgressBar::chunk { background-color: %4; } "
+            "QProgressBar QLabel { color: %2; } "
+            "QScrollBar:vertical { background-color: #0a0a0a; width: 12px; border: 1px solid %4; } "
+            "QScrollBar::groove:vertical { background-color: #0a0a0a; } "
+            "QScrollBar::sub-page:vertical, QScrollBar::add-page:vertical { background-color: #0a0a0a; } "
+            "QScrollBar::handle:vertical { background-color: %4; min-height: 20px; border-radius: 6px; } "
+            "QScrollBar::handle:vertical:hover { background-color: %6; } "
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; background-color: #0a0a0a; } "
+            "QScrollBar:horizontal { background-color: #0a0a0a; height: 12px; border: 1px solid %4; } "
+            "QScrollBar::groove:horizontal { background-color: #0a0a0a; } "
+            "QScrollBar::sub-page:horizontal, QScrollBar::add-page:horizontal { background-color: #0a0a0a; } "
+            "QScrollBar::handle:horizontal { background-color: %4; min-width: 20px; border-radius: 6px; } "
+            "QScrollBar::handle:horizontal:hover { background-color: %6; } "
+            "QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0px; background-color: #0a0a0a; } "
             "QLabel { color: %2; } "
         )
         .arg(colors.bgPrimary.name())
@@ -157,8 +170,21 @@ QString ThemeManager::getStylesheet(Theme theme) {
             "QTableWidget::item:selected { background-color: %4; color: %1; } "
             "QHeaderView::section { background-color: %3; color: %4; border: 1px solid %4; padding: 5px; font-weight: bold; } "
             "QTextEdit { background-color: %1; color: %2; border: 2px solid %4; border-radius: 4px; } "
-            "QProgressBar { background-color: %3; color: %2; border: 2px solid %4; border-radius: 4px; text-align: center; } "
+            "QProgressBar { background-color: %3; color: #ffffff; border: 2px solid %4; border-radius: 4px; text-align: center; } "
             "QProgressBar::chunk { background-color: %4; } "
+            "QProgressBar QLabel { color: #ffffff; } "
+            "QScrollBar:vertical { background-color: #0a0a0a; width: 12px; border: 1px solid %4; } "
+            "QScrollBar::groove:vertical { background-color: #0a0a0a; } "
+            "QScrollBar::sub-page:vertical, QScrollBar::add-page:vertical { background-color: #0a0a0a; } "
+            "QScrollBar::handle:vertical { background-color: %4; min-height: 20px; border-radius: 6px; } "
+            "QScrollBar::handle:vertical:hover { background-color: %6; } "
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; background-color: #0a0a0a; } "
+            "QScrollBar:horizontal { background-color: #0a0a0a; height: 12px; border: 1px solid %4; } "
+            "QScrollBar::groove:horizontal { background-color: #0a0a0a; } "
+            "QScrollBar::sub-page:horizontal, QScrollBar::add-page:horizontal { background-color: #0a0a0a; } "
+            "QScrollBar::handle:horizontal { background-color: %4; min-width: 20px; border-radius: 6px; } "
+            "QScrollBar::handle:horizontal:hover { background-color: %6; } "
+            "QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0px; background-color: #0a0a0a; } "
             "QLabel { color: %2; } "
         )
         .arg(colors.bgPrimary.name())

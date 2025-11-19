@@ -1159,6 +1159,47 @@ void MainWindow::applyTheme(Theme theme) {
         _testInfoLabel->setStyleSheet("padding: 5px; background-color: #0a1a0a; border: 1px solid #00ff00; color: #00ff41;");
     }
     
+    // Устанавливаем базовый цвет текста для журнала и перекрашиваем весь существующий текст
+    ThemeColors colors = ThemeManager::getColors(theme);
+    QColor logTextColor;
+    if (theme == Theme::DeusEx) {
+        logTextColor = colors.accent; // Золотистый для DeusEx
+    } else {
+        logTextColor = colors.text; // Зеленый для Matrix
+    }
+    
+    // Сохраняем весь текст из журнала
+    QString logText = _log->toPlainText();
+    
+    // Перекрашиваем весь текст в журнале
+    if (!logText.isEmpty()) {
+        // Перекрашиваем сообщения по типам
+        QStringList lines = logText.split('\n');
+        _log->clear();
+        _log->setTextColor(logTextColor); // Базовый цвет
+        
+        for (const QString& line : lines) {
+            if (line.isEmpty()) continue;
+            
+            // Определяем тип сообщения по содержимому строки
+            if (line.contains("INFO:")) {
+                _log->setTextColor(colors.logInfo);
+            } else if (line.contains("WARNING:")) {
+                _log->setTextColor(colors.logWarning);
+            } else if (line.contains("ERROR:")) {
+                _log->setTextColor(colors.logError);
+            } else if (line.contains("SUCCESS:")) {
+                _log->setTextColor(colors.logSuccess);
+            } else {
+                _log->setTextColor(logTextColor); // Базовый цвет для неизвестных типов
+            }
+            _log->append(line);
+        }
+    } else {
+        // Если журнал пуст, просто устанавливаем базовый цвет
+        _log->setTextColor(logTextColor);
+    }
+    
     // Refresh table to apply theme colors
     refreshTable(0, _mem->size());
 }

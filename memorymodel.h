@@ -28,6 +28,7 @@ InjectedFault currentFault() const;
 signals:
 void dataChanged(size_t begin, size_t end);
 void faultInjected();
+void errorOccurred(const QString& message);
 
 private:
 mutable QMutex _mutex;

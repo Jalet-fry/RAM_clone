@@ -21,10 +21,10 @@ public:
 
 private:
     bool _isAddrFaultyUnlocked(size_t addr) const; // Без блокировки мьютекса
+    std::mt19937& getRNG() const; // Thread-local RNG accessor
 
     mutable QMutex _mutex;
     InjectedFault _injected;
-    mutable std::mt19937 _rng;
 };
 
 #endif // FAULTINJECTOR_H

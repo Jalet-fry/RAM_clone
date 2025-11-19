@@ -21,6 +21,9 @@ struct InjectedFault {
     FaultModel model = FaultModel::None;
     size_t addr = 0;
     size_t len = 1;
+    // Probability field usage depends on fault model:
+    // - BitFlip: probability of flipping each bit (per-bit probability)
+    // - StuckAt0/StuckAt1/OpenRead: probability of applying fault at address level (per-address probability)
     double flip_probability = 0.01;
 };
 

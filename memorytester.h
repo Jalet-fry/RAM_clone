@@ -25,7 +25,12 @@ void finished(const std::vector<TestResult>& results);
 
 
 private:
-MemoryModel* _mem;
-std::vector<TestResult> _results;
+    // Helper methods to reduce code duplication
+    void writePattern(size_t addr, Word pattern);
+    void readAndVerify(size_t addr, Word expected);
+    void updateProgress(size_t current, size_t total, double phasePercent, double basePercent = 0.0);
+    
+    MemoryModel* _mem;
+    std::vector<TestResult> _results;
 };
 #endif // MEMORYTESTER_H

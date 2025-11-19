@@ -6,122 +6,91 @@
 MemoryTester::MemoryTester(MemoryModel* mem, QObject* parent)
     : QObject(parent), _mem(mem) {}
 
+void MemoryTester::writePattern(size_t addr, Word pattern) {
+    _mem->writeDirect(addr, pattern);
+}
+
+void MemoryTester::readAndVerify(size_t addr, Word expected) {
+    Word read = _mem->read(addr);
+    bool pass = (expected == read);
+    _results.push_back({addr, expected, read, pass});
+    if (addr % PROGRESS_UPDATE_INTERVAL == 0 || addr == _mem->size() - 1) {
+        emit progressDetail(addr, expected, read);
+    }
+}
+
+void MemoryTester::updateProgress(size_t current, size_t total, double phasePercent, double basePercent) {
+    if (current % PROGRESS_UPDATE_INTERVAL == 0 || current == total - 1) {
+        int percent = int(basePercent) + int((current * phasePercent) / total);
+        emit progress(percent);
+        QThread::msleep(VISUALIZATION_DELAY_MS);
+    }
+}
+
 void MemoryTester::runTest(TestAlgorithm algo) {
     _results.clear();
     size_t n = _mem->size();
     if (n == 0) { emit progress(100); emit finished(_results); return; }
 
     if (algo == TestAlgorithm::WalkingOnes) {
-        // Фаза 1: Запись эталонных данных
+        // Phase 1: Write reference data
         for (size_t a = 0; a < n; ++a) {
-            Word pattern = (1u << (a % 32));
-            _mem->writeDirect(a, pattern); // Гарантированная запись без искажений
-            // Обновляем прогресс реже для производительности
-            if (a % PROGRESS_UPDATE_INTERVAL == 0 || a == n - 1) {
-                int percent = int((a * PROGRESS_PHASE_PERCENT) / n);
-                emit progress(percent);
-                // Добавляем небольшую задержку для визуализации
-                QThread::msleep(VISUALIZATION_DELAY_MS);
-            }
+            Word pattern = (1u << (a % BITS_PER_WORD));
+            writePattern(a, pattern);
+            updateProgress(a, n, PROGRESS_PHASE_PERCENT);
         }
         
-        // Фаза 2: Чтение и проверка (здесь применяются неисправности)
+        // Phase 2: Read and verify (faults are applied here)
         for (size_t a = 0; a < n; ++a) {
-            Word expected = (1u << (a % 32)); // То, что мы записали
-            Word r = _mem->read(a);           // То, что прочитали (возможно с неисправностью)
-            bool pass = (expected == r);
-            _results.push_back({a, expected, r, pass});
-            // Обновляем прогресс и детали реже для производительности
-            if (a % PROGRESS_UPDATE_INTERVAL == 0 || a == n - 1) {
-                int percent = int(PROGRESS_PHASE_PERCENT) + int(((a + 1) * PROGRESS_PHASE_PERCENT) / n);
-                emit progress(percent);
-                emit progressDetail(a, expected, r);
-                // Добавляем небольшую задержку для визуализации
-                QThread::msleep(VISUALIZATION_DELAY_MS);
-            }
+            Word expected = (1u << (a % BITS_PER_WORD)); // What we wrote
+            readAndVerify(a, expected);
+            updateProgress(a, n, PROGRESS_PHASE_PERCENT, PROGRESS_PHASE_PERCENT);
         }
-        emit progress(100); // Гарантируем 100% в конце
+        emit progress(PROGRESS_MAX_PERCENT); // Guarantee 100% at the end
         
     } else if (algo == TestAlgorithm::WalkingZeros) {
-        // Фаза 1: Запись эталонных данных
+        // Phase 1: Write reference data
         for (size_t a = 0; a < n; ++a) {
-            Word pattern = ~(1u << (a % 32));
-            _mem->writeDirect(a, pattern);
-            // Обновляем прогресс реже для производительности
-            if (a % PROGRESS_UPDATE_INTERVAL == 0 || a == n - 1) {
-                int percent = int((a * PROGRESS_PHASE_PERCENT) / n);
-                emit progress(percent);
-                // Добавляем небольшую задержку для визуализации
-                QThread::msleep(VISUALIZATION_DELAY_MS);
-            }
+            Word pattern = ~(1u << (a % BITS_PER_WORD));
+            writePattern(a, pattern);
+            updateProgress(a, n, PROGRESS_PHASE_PERCENT);
         }
         
-        // Фаза 2: Чтение и проверка
+        // Phase 2: Read and verify
         for (size_t a = 0; a < n; ++a) {
-            Word expected = ~(1u << (a % 32));
-            Word r = _mem->read(a);
-            bool pass = (expected == r);
-            _results.push_back({a, expected, r, pass});
-            // Обновляем прогресс и детали реже для производительности
-            if (a % PROGRESS_UPDATE_INTERVAL == 0 || a == n - 1) {
-                int percent = int(PROGRESS_PHASE_PERCENT) + int(((a + 1) * PROGRESS_PHASE_PERCENT) / n);
-                emit progress(percent);
-                emit progressDetail(a, expected, r);
-                // Добавляем небольшую задержку для визуализации
-                QThread::msleep(VISUALIZATION_DELAY_MS);
-            }
+            Word expected = ~(1u << (a % BITS_PER_WORD));
+            readAndVerify(a, expected);
+            updateProgress(a, n, PROGRESS_PHASE_PERCENT, PROGRESS_PHASE_PERCENT);
         }
-        emit progress(100); // Гарантируем 100% в конце
+        emit progress(PROGRESS_MAX_PERCENT); // Guarantee 100% at the end
         
     } else if (algo == TestAlgorithm::MarchSimple) {
-        // Марш-тест: запись 0 → чтение 0 → запись 1 → чтение 1
+        // March test: write 0 → read 0 → write 1 → read 1
         
-        // Шаг 1: Запись всех 0
+        // Step 1: Write all 0s
         for (size_t a = 0; a < n; ++a) {
-            _mem->writeDirect(a, 0u);
-            if (a % PROGRESS_UPDATE_INTERVAL == 0 || a == n - 1) {
-                emit progress(int((a * PROGRESS_MARCH_PERCENT) / n));
-                // Добавляем небольшую задержку для визуализации
-                QThread::msleep(VISUALIZATION_DELAY_MS);
-            }
+            writePattern(a, 0u);
+            updateProgress(a, n, PROGRESS_MARCH_PERCENT);
         }
         
-        // Шаг 2: Чтение всех 0 (ожидаем 0)
+        // Step 2: Read all 0s (expect 0)
         for (size_t a = 0; a < n; ++a) {
-            Word r = _mem->read(a);
-            bool pass = (r == 0u);
-            _results.push_back({a, 0u, r, pass});
-            if (a % PROGRESS_UPDATE_INTERVAL == 0 || a == n - 1) {
-                emit progress(int(PROGRESS_MARCH_PERCENT) + int(((a + 1) * PROGRESS_MARCH_PERCENT) / n));
-                emit progressDetail(a, 0u, r);
-                // Добавляем небольшую задержку для визуализации
-                QThread::msleep(VISUALIZATION_DELAY_MS);
-            }
+            readAndVerify(a, 0u);
+            updateProgress(a, n, PROGRESS_MARCH_PERCENT, PROGRESS_MARCH_PERCENT);
         }
         
-        // Шаг 3: Запись всех 1
+        // Step 3: Write all 1s
         for (size_t a = 0; a < n; ++a) {
-            _mem->writeDirect(a, ~0u);
-            if (a % PROGRESS_UPDATE_INTERVAL == 0 || a == n - 1) {
-                emit progress(int(PROGRESS_MARCH_PERCENT * 2) + int((a * PROGRESS_MARCH_PERCENT) / n));
-                // Добавляем небольшую задержку для визуализации
-                QThread::msleep(VISUALIZATION_DELAY_MS);
-            }
+            writePattern(a, ~0u);
+            updateProgress(a, n, PROGRESS_MARCH_PERCENT, PROGRESS_MARCH_PERCENT * 2);
         }
         
-        // Шаг 4: Чтение всех 1 (ожидаем 1)
+        // Step 4: Read all 1s (expect 1)
         for (size_t a = 0; a < n; ++a) {
-            Word r = _mem->read(a);
-            bool pass = (r == ~0u);
-            _results.push_back({a, ~0u, r, pass});
-            if (a % PROGRESS_UPDATE_INTERVAL == 0 || a == n - 1) {
-                emit progress(int(PROGRESS_MARCH_PERCENT * 3) + int(((a + 1) * PROGRESS_MARCH_PERCENT) / n));
-                emit progressDetail(a, ~0u, r);
-                // Добавляем небольшую задержку для визуализации
-                QThread::msleep(VISUALIZATION_DELAY_MS);
-            }
+            readAndVerify(a, ~0u);
+            updateProgress(a, n, PROGRESS_MARCH_PERCENT, PROGRESS_MARCH_PERCENT * 3);
         }
-        emit progress(100); // Гарантируем 100% в конце
+        emit progress(PROGRESS_MAX_PERCENT); // Guarantee 100% at the end
     }
 
     emit finished(_results);

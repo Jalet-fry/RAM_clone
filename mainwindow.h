@@ -14,6 +14,10 @@
 #include <QTimer>
 #include <QTime>
 #include <QActionGroup>
+#include <memory>
+#include <unordered_map>
+#include <set>
+#include <vector>
 #include "types.h"
 #include "memorymodel.h"
 #include "testerworker.h"
@@ -38,6 +42,7 @@ private slots:
     void exportResults();
     void scrollToNextFault();
     void onAlgorithmChanged(int index);
+    void onFaultModelChanged(int index);
     void updateFaultInfo();
     void updateStatistics();
     void updateTestInfo();
@@ -46,15 +51,24 @@ private slots:
 
 private:
     void highlightCurrentAddress(size_t addr);
-    void updateMemoryCellStatus(size_t addr);
     void applyTheme(Theme theme);
     QString getThemeStylesheet(Theme theme);
+    
+    // Helper methods for refreshTable
+    QTableWidgetItem* createOrGetTableItem(int row, int col);
+    void applyFailedTestHighlighting(size_t addr, const ThemeColors& colors);
+    void populateTableData(size_t addr, const Word value, const InjectedFault& f, 
+                          const std::set<size_t>& testedAddresses, 
+                          const std::unordered_map<size_t, TestResult>& resultMap,
+                          const ThemeColors& colors);
+    void applyTableColors(size_t addr, bool isFaulty, bool isTested, bool hasFailedTest,
+                         const ThemeColors& colors);
 
-    MemoryModel* _mem;
-    TesterWorker* _worker;
-    QTimer* _testTimer;
+    MemoryModel* _mem;  // Owned by Qt parent (this)
+    std::unique_ptr<TesterWorker> _worker;
+    QTimer* _testTimer;  // Owned by Qt parent (this)
     QTime _testStartTime;
-    Logger* _logger;
+    std::unique_ptr<Logger> _logger;
 
     // UI elements
     QGroupBox* _faultGroup;
@@ -98,6 +112,7 @@ private:
     size_t _currentTestAddr;
     size_t _lastHighlightedAddr;
     bool _testRunning;
+    bool _dataChangedConnected;  // Track connection state
 
     // Theme management
     Theme _currentTheme;

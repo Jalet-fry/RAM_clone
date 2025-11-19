@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QThread>
+#include <memory>
 #include "types.h"
 #include "memorytester.h"
 
@@ -23,6 +24,7 @@ signals:
 private:
     QThread _thread;
     MemoryModel* _mem;
+    std::unique_ptr<MemoryTester> _tester;
 };
 
 #endif // TESTERWORKER_H

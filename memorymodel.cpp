@@ -68,11 +68,17 @@ void MemoryModel::writeDirect(size_t addr, Word value) {
 }
 
 void MemoryModel::injectFault(const InjectedFault& f) {
+    size_t size;
+    {
+        QMutexLocker locker(&_mutex);
+        size = _words.size(); // Read size while mutex is locked
+    }
     _faultInjector->injectFault(f);
     emit faultInjected();
-    emit dataChanged(0, _words.size());
+    emit dataChanged(0, size);
 }
 
 InjectedFault MemoryModel::currentFault() const {
+    // currentFault() is thread-safe (uses mutex internally)
     return _faultInjector->currentFault();
 }

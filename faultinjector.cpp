@@ -3,25 +3,21 @@
 #include <random>
 #include <memory>
 
-// Thread-local RNG for thread safety
-// Use __thread for MinGW compatibility if thread_local is not available
-#if defined(__GNUC__) && (__GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 8))
-    // Fallback for older GCC versions
-    // Use unique_ptr with custom deleter to avoid memory leaks
-    static __thread std::unique_ptr<std::mt19937> threadLocalRNGPtr;
-    static std::mt19937& getThreadLocalRNG() {
-        if (!threadLocalRNGPtr) {
-            threadLocalRNGPtr = std::unique_ptr<std::mt19937>(new std::mt19937(std::random_device{}()));
-        }
-        return *threadLocalRNGPtr;
+// Thread-local storage for RNG (one per thread)
+static QThreadStorage<std::mt19937*> threadLocalRNGStorage;
+
+static std::mt19937& getThreadLocalRNG() {
+    if (!threadLocalRNGStorage.hasLocalData()) {
+        threadLocalRNGStorage.setLocalData(new std::mt19937(std::random_device{}()));
     }
-#else
-    // Use standard thread_local for newer compilers
-    thread_local std::mt19937 threadLocalRNG(std::random_device{}());
-    static std::mt19937& getThreadLocalRNG() {
-        return threadLocalRNG;
+    auto* rng = threadLocalRNGStorage.localData();
+    if (!rng) {
+        // Additional safety check: if localData() returns nullptr, create new RNG
+        threadLocalRNGStorage.setLocalData(new std::mt19937(std::random_device{}()));
+        rng = threadLocalRNGStorage.localData();
     }
-#endif
+    return *rng;
+}
 
 FaultInjector::FaultInjector()
     : _injected() {}

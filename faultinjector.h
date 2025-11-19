@@ -3,6 +3,7 @@
 
 #include <random>
 #include <QMutex>
+#include <QThreadStorage>
 #include "types.h"
 
 class FaultInjector {

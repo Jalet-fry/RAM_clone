@@ -36,7 +36,13 @@ SOURCES += \
     tableitemdelegate.cpp \
     faultinjector.cpp \
     logger.cpp \
-    dataformatter.cpp
+    dataformatter.cpp \
+    memorytablemanager.cpp \
+    statisticsmanager.cpp \
+    faultcontroller.cpp \
+    testcontroller.cpp \
+    resultsnavigator.cpp \
+    themecontroller.cpp
 
 # Header files
 HEADERS += \
@@ -50,7 +56,13 @@ HEADERS += \
     types.h \
     logger.h \
     dataformatter.h \
-    constants.h
+    constants.h \
+    memorytablemanager.h \
+    statisticsmanager.h \
+    faultcontroller.h \
+    testcontroller.h \
+    resultsnavigator.h \
+    themecontroller.h
 
 # UI files
 FORMS += \

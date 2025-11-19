@@ -14,6 +14,7 @@
 #include <QTimer>
 #include <QTime>
 #include <QActionGroup>
+#include <QAction>
 #include <memory>
 #include <unordered_map>
 #include <set>
@@ -25,6 +26,12 @@
 #include "tableitemdelegate.h"
 #include "logger.h"
 #include "dataformatter.h"
+#include "memorytablemanager.h"
+#include "statisticsmanager.h"
+#include "faultcontroller.h"
+#include "testcontroller.h"
+#include "resultsnavigator.h"
+#include "themecontroller.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -33,42 +40,28 @@ public:
     ~MainWindow();
 
 private slots:
-    void onInject();
-    void onReset();
-    void onStartTest();
-    void onTestFinished(const std::vector<TestResult>& results);
-    void refreshTable(size_t begin, size_t end);
     void clearLog();
-    void exportResults();
-    void scrollToNextFault();
-    void onAlgorithmChanged(int index);
-    void onFaultModelChanged(int index);
-    void updateFaultInfo();
-    void updateStatistics();
-    void updateTestInfo();
-    void updateProgressDetails(size_t addr, Word expected, Word read);
-    void onThemeChanged();
+    void onTableDataChanged(size_t begin, size_t end);
+    void onFaultInjected();
+    void onMemoryReset();
+    void onTestStarted();
+    void onTestFinished(const std::vector<TestResult>& results);
+    void onTestResultsUpdated(const std::vector<TestResult>& results);
+    void onThemeChanged(Theme theme);
 
 private:
-    void highlightCurrentAddress(size_t addr);
-    void applyTheme(Theme theme);
-    QString getThemeStylesheet(Theme theme);
-    
-    // Helper methods for refreshTable
-    QTableWidgetItem* createOrGetTableItem(int row, int col);
-    void applyFailedTestHighlighting(size_t addr, const ThemeColors& colors);
-    void populateTableData(size_t addr, const Word value, const InjectedFault& f, 
-                          const std::set<size_t>& testedAddresses, 
-                          const std::unordered_map<size_t, TestResult>& resultMap,
-                          const ThemeColors& colors);
-    void applyTableColors(size_t addr, bool isFaulty, bool isTested, bool hasFailedTest,
-                         const ThemeColors& colors);
 
     MemoryModel* _mem;  // Owned by Qt parent (this)
     std::unique_ptr<TesterWorker> _worker;
-    QTimer* _testTimer;  // Owned by Qt parent (this)
-    QTime _testStartTime;
     std::unique_ptr<Logger> _logger;
+    
+    // Managers
+    std::unique_ptr<MemoryTableManager> _tableManager;
+    std::unique_ptr<StatisticsManager> _statisticsManager;
+    std::unique_ptr<FaultController> _faultController;
+    std::unique_ptr<TestController> _testController;
+    std::unique_ptr<ResultsNavigator> _resultsNavigator;
+    std::unique_ptr<ThemeController> _themeController;
 
     // UI elements
     QGroupBox* _faultGroup;
@@ -106,21 +99,16 @@ private:
     QPushButton* _searchBtn;
     QPushButton* _scrollToNextFaultBtn;
     QPushButton* _clearLogBtn;
-    QPushButton* _exportBtn;
 
-    std::vector<TestResult> _lastResults;
-    size_t _currentTestAddr;
-    size_t _lastHighlightedAddr;
-    bool _testRunning;
-    bool _dataChangedConnected;  // Track connection state
-
-    // Theme management
-    Theme _currentTheme;
+    // Theme menu
     QActionGroup* _themeGroup;
     QAction* _deusExAction;
     QAction* _matrixAction;
     QAction* _gurrenLagannAction;
     QAction* _cyberpunkAction;
+
+    std::vector<TestResult> _lastResults;
+    bool _dataChangedConnected;  // Track connection state
 };
 
 #endif // MAINWINDOW_H

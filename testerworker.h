@@ -12,6 +12,9 @@ class TesterWorker : public QObject {
 public:
     explicit TesterWorker(MemoryModel* mem, QObject* parent = nullptr);
     ~TesterWorker() override;
+    
+    // Initialize thread - must be called after object is fully constructed
+    void initialize();
 
 public slots:
     void run(TestAlgorithm algo);

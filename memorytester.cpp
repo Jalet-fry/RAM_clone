@@ -14,7 +14,9 @@ void MemoryTester::readAndVerify(size_t addr, Word expected) {
     Word read = _mem->read(addr);
     bool pass = (expected == read);
     _results.push_back({addr, expected, read, pass});
-    if (addr % PROGRESS_UPDATE_INTERVAL == 0 || addr == _mem->size() - 1) {
+    // Get size safely (thread-safe method)
+    size_t memSize = _mem->size();
+    if (addr % PROGRESS_UPDATE_INTERVAL == 0 || (memSize > 0 && addr == memSize - 1)) {
         emit progressDetail(addr, expected, read);
     }
 }
@@ -29,8 +31,12 @@ void MemoryTester::updateProgress(size_t current, size_t total, double phasePerc
 
 void MemoryTester::runTest(TestAlgorithm algo) {
     _results.clear();
-    size_t n = _mem->size();
-    if (n == 0) { emit progress(100); emit finished(_results); return; }
+    size_t n = _mem->size(); // Thread-safe call
+    if (n == 0) { 
+        emit progress(PROGRESS_MAX_PERCENT); 
+        emit finished(_results); 
+        return; 
+    }
 
     if (algo == TestAlgorithm::WalkingOnes) {
         // Phase 1: Write reference data

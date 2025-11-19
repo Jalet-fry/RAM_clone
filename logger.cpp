@@ -1,4 +1,5 @@
 #include "logger.h"
+#include "thememanager.h"
 
 Logger::Logger(QTextEdit* logWidget, Theme theme)
     : _log(logWidget), _theme(theme) {
@@ -39,6 +40,9 @@ void Logger::success(const QString& message) {
 void Logger::clear() {
     if (_log) {
         _log->clear();
+        // Reset text color to default theme color after clearing
+        ThemeColors colors = ThemeManager::getColors(_theme);
+        _log->setTextColor(colors.logInfo);
     }
 }
 

@@ -2,7 +2,7 @@
 #include <algorithm>
 
 MemoryModel::MemoryModel(size_t words, QObject* parent)
-    : QObject(parent), _words(words, 0), _faultInjector(std::unique_ptr<FaultInjector>(new FaultInjector())) {}
+    : QObject(parent), _words(words, 0), _faultInjector(new FaultInjector()) {}
 
 MemoryModel::~MemoryModel() = default;
 

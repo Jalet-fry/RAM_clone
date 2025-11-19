@@ -3,20 +3,30 @@
 #include <random>
 #include <memory>
 
+// Wrapper class for thread-local RNG storage with automatic cleanup
+class ThreadLocalRNGWrapper {
+public:
+    ThreadLocalRNGWrapper() : _rng(std::random_device{}()) {}
+    std::mt19937& get() { return _rng; }
+private:
+    std::mt19937 _rng;
+};
+
 // Thread-local storage for RNG (one per thread)
-static QThreadStorage<std::mt19937*> threadLocalRNGStorage;
+// QThreadStorage automatically calls destructor when thread ends, ensuring proper cleanup
+static QThreadStorage<ThreadLocalRNGWrapper*> threadLocalRNGStorage;
 
 static std::mt19937& getThreadLocalRNG() {
     if (!threadLocalRNGStorage.hasLocalData()) {
-        threadLocalRNGStorage.setLocalData(new std::mt19937(std::random_device{}()));
+        threadLocalRNGStorage.setLocalData(new ThreadLocalRNGWrapper());
     }
-    auto* rng = threadLocalRNGStorage.localData();
-    if (!rng) {
-        // Additional safety check: if localData() returns nullptr, create new RNG
-        threadLocalRNGStorage.setLocalData(new std::mt19937(std::random_device{}()));
-        rng = threadLocalRNGStorage.localData();
+    ThreadLocalRNGWrapper* wrapper = threadLocalRNGStorage.localData();
+    if (!wrapper) {
+        // Additional safety check: if localData() returns nullptr, create new wrapper
+        threadLocalRNGStorage.setLocalData(new ThreadLocalRNGWrapper());
+        wrapper = threadLocalRNGStorage.localData();
     }
-    return *rng;
+    return wrapper->get();
 }
 
 FaultInjector::FaultInjector()

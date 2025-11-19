@@ -30,11 +30,11 @@ MainWindow::MainWindow(QWidget* parent)
     qDebug() << "MainWindow: TesterWorker created";
 
     // Main layout with splitter
-    QWidget* central = new QWidget;
+    QWidget* central = new QWidget(this);
     QVBoxLayout* mainLayout = new QVBoxLayout(central);
 
     // Top section: Control panels
-    QSplitter* topSplitter = new QSplitter(Qt::Horizontal);
+    QSplitter* topSplitter = new QSplitter(Qt::Horizontal, central);
 
     // Fault Management Group
     _faultGroup = new QGroupBox("Управление неисправностями");
@@ -169,10 +169,10 @@ MainWindow::MainWindow(QWidget* parent)
     mainLayout->addWidget(topSplitter, 0);
 
     // Bottom section: Memory table and log
-    QSplitter* bottomSplitter = new QSplitter(Qt::Horizontal);
+    QSplitter* bottomSplitter = new QSplitter(Qt::Horizontal, central);
 
     // Memory Table
-    QWidget* memoryWidget = new QWidget;
+    QWidget* memoryWidget = new QWidget(bottomSplitter);
     QVBoxLayout* memoryLayout = new QVBoxLayout(memoryWidget);
 
     QHBoxLayout* tableControlsLayout = new QHBoxLayout;
@@ -207,7 +207,7 @@ MainWindow::MainWindow(QWidget* parent)
     bottomSplitter->addWidget(memoryWidget);
 
     // Log
-    QWidget* logWidget = new QWidget;
+    QWidget* logWidget = new QWidget(bottomSplitter);
     QVBoxLayout* logLayout = new QVBoxLayout(logWidget);
 
     QHBoxLayout* logControlsLayout = new QHBoxLayout;

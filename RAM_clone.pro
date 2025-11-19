@@ -33,7 +33,8 @@ SOURCES += \
     memorytester.cpp \
     testerworker.cpp \
     thememanager.cpp \
-    tableitemdelegate.cpp
+    tableitemdelegate.cpp \
+    faultinjector.cpp
 
 # Header files
 HEADERS += \
@@ -42,7 +43,8 @@ HEADERS += \
     memorytester.h \
     testerworker.h \
     thememanager.h \
-    tableitemdelegate.h
+    tableitemdelegate.h \
+    faultinjector.h
 
 # UI files
 FORMS += \

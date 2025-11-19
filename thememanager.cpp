@@ -21,7 +21,7 @@ ThemeColors ThemeManager::getColors(Theme theme) {
         colors.failedTestBg = QColor(200, 50, 50);      // ЯРКИЙ КРАСНЫЙ
         colors.failedTestText = QColor(255, 255, 255); // Белый текст
         colors.passedTestBg = QColor(40, 50, 40);
-        colors.passedTestText = QColor(224, 224, 224);
+        colors.passedTestText = QColor(212, 175, 55);  // Золотистый (accent цвет)
         colors.faultyNotTestedBg = QColor(80, 70, 40);
         colors.faultyNotTestedText = QColor(244, 208, 63);
         colors.untestedBgEven = QColor(30, 30, 30);
@@ -33,7 +33,7 @@ ThemeColors ThemeManager::getColors(Theme theme) {
         colors.statusFailedBg = QColor(200, 50, 50);
         colors.statusFailedText = QColor(255, 255, 255);
         colors.statusUntestedBg = QColor(45, 45, 45);
-        colors.statusUntestedText = QColor(224, 224, 224);
+        colors.statusUntestedText = QColor(212, 175, 55);  // Золотистый (accent цвет) вместо белого
         
         // Цвета для логов
         colors.logInfo = QColor(224, 224, 224);
@@ -66,7 +66,7 @@ ThemeColors ThemeManager::getColors(Theme theme) {
         
         // Цвета для статуса
         colors.statusPassedBg = QColor(0, 100, 0);
-        colors.statusPassedText = QColor(255, 255, 255);
+        colors.statusPassedText = QColor(0, 255, 65);  // Зелёный (как tableText) вместо белого
         colors.statusFailedBg = QColor(200, 0, 0);
         colors.statusFailedText = QColor(255, 255, 255);
         colors.statusUntestedBg = QColor(10, 10, 10);

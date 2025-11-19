@@ -41,6 +41,7 @@ MainWindow::MainWindow(QWidget* parent)
     _faultCombo->addItem("Stuck-at-1", (int)FaultModel::StuckAt1);
     _faultCombo->addItem("Bit-flip", (int)FaultModel::BitFlip);
     _faultCombo->addItem("Open (invalid read)", (int)FaultModel::OpenRead);
+    _faultCombo->setCurrentIndex(3); // Bit-flip по умолчанию
     _faultCombo->setToolTip("Выберите модель неисправности для внедрения в память");
     faultModelLayout->addWidget(_faultCombo);
     faultLayout->addLayout(faultModelLayout);
@@ -55,7 +56,7 @@ MainWindow::MainWindow(QWidget* parent)
 
     QHBoxLayout* lenLayout = new QHBoxLayout;
     lenLayout->addWidget(new QLabel("Длина (слов):"));
-    _lenEdit = new QLineEdit("1");
+    _lenEdit = new QLineEdit("100");
     _lenEdit->setToolTip("Количество слов с неисправностью");
     _lenEdit->setValidator(new QIntValidator(1, 256, this));
     lenLayout->addWidget(_lenEdit);
@@ -66,7 +67,7 @@ MainWindow::MainWindow(QWidget* parent)
     _flipProbSpin = new QDoubleSpinBox;
     _flipProbSpin->setRange(0.0, 1.0);
     _flipProbSpin->setSingleStep(0.01);
-    _flipProbSpin->setValue(0.01);
+    _flipProbSpin->setValue(0.110);
     _flipProbSpin->setDecimals(3);
     _flipProbSpin->setToolTip("Вероятность инверсии бита для модели Bit-flip (0.0 - 1.0)");
     probLayout->addWidget(_flipProbSpin);
@@ -459,6 +460,7 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
         }
         addrItem->setText(QString::number(i));
         addrItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        // Начальный цвет будет перезаписан в цикле, но для непротестированных строк в DeusEx используем accent
         addrItem->setForeground(colors.tableText);
 
         Word v = _mem->read(i);
@@ -593,7 +595,7 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
         } else {
             faultTypeItem->setText("—");
             if (_currentTheme == Theme::DeusEx) {
-                faultTypeItem->setForeground(QColor(224, 224, 224)); // Светло-серый текст
+                faultTypeItem->setForeground(colors.accent); // Золотистый текст для непротестированных
             } else {
                 faultTypeItem->setForeground(QColor(0, 255, 65)); // Зеленый текст
             }
@@ -639,7 +641,12 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
                         } else {
                             item->setBackground(colors.untestedBgOdd);
                         }
-                        item->setForeground(colors.tableText);
+                        // В DeusEx используем золотистый цвет для непротестированных строк
+                        if (_currentTheme == Theme::DeusEx) {
+                            item->setForeground(colors.accent);
+                        } else {
+                            item->setForeground(colors.tableText);
+                        }
                     }
                     // Стандартные цвета для первых 4 колонок (fallback)
                     else if (col < 4) {

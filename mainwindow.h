@@ -105,6 +105,8 @@ private:
     QActionGroup* _themeGroup;
     QAction* _deusExAction;
     QAction* _matrixAction;
+    QAction* _gurrenLagannAction;
+    QAction* _cyberpunkAction;
 };
 
 #endif // MAINWINDOW_H

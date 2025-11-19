@@ -261,6 +261,16 @@ MainWindow::MainWindow(QWidget* parent)
     _themeGroup->addAction(_matrixAction);
     viewMenu->addAction(_matrixAction);
     
+    _gurrenLagannAction = new QAction("Gurren Lagann", this);
+    _gurrenLagannAction->setCheckable(true);
+    _themeGroup->addAction(_gurrenLagannAction);
+    viewMenu->addAction(_gurrenLagannAction);
+    
+    _cyberpunkAction = new QAction("Cyberpunk", this);
+    _cyberpunkAction->setCheckable(true);
+    _themeGroup->addAction(_cyberpunkAction);
+    viewMenu->addAction(_cyberpunkAction);
+    
     connect(_themeGroup, &QActionGroup::triggered, this, &MainWindow::onThemeChanged);
 
     // Connections
@@ -560,11 +570,7 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
         
         if (isFaulty) {
             faultTypeItem->setText(getFaultModelName(f.model));
-            if (_currentTheme == Theme::DeusEx) {
-                faultTypeItem->setForeground(QColor(244, 208, 63)); // Золотистый текст
-            } else {
-                faultTypeItem->setForeground(QColor(0, 255, 0)); // Яркий зеленый текст
-            }
+            faultTypeItem->setForeground(colors.faultyNotTestedText);
         } else if (isTested) {
             // Check if fault was detected
             bool faultDetected = false;
@@ -579,26 +585,14 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
             }
             if (!faultDetected) {
                 faultTypeItem->setText("—");
-                if (_currentTheme == Theme::DeusEx) {
-                    faultTypeItem->setForeground(QColor(224, 224, 224)); // Светло-серый текст
-                } else {
-                    faultTypeItem->setForeground(QColor(0, 255, 65)); // Зеленый текст
-                }
+                faultTypeItem->setForeground(colors.tableText);
             } else {
                 faultTypeItem->setText("Обнаружена");
-                if (_currentTheme == Theme::DeusEx) {
-                    faultTypeItem->setForeground(QColor(255, 100, 100)); // Светло-красный текст
-                } else {
-                    faultTypeItem->setForeground(QColor(255, 0, 0)); // Красный текст
-                }
+                faultTypeItem->setForeground(colors.failedTestText);
             }
         } else {
             faultTypeItem->setText("—");
-            if (_currentTheme == Theme::DeusEx) {
-                faultTypeItem->setForeground(colors.accent); // Золотистый текст для непротестированных
-            } else {
-                faultTypeItem->setForeground(QColor(0, 255, 65)); // Зеленый текст
-            }
+            faultTypeItem->setForeground(colors.statusUntestedText);
         }
 
         // Применяем цвета в зависимости от состояния строки
@@ -641,12 +635,8 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
                         } else {
                             item->setBackground(colors.untestedBgOdd);
                         }
-                        // В DeusEx используем золотистый цвет для непротестированных строк
-                        if (_currentTheme == Theme::DeusEx) {
-                            item->setForeground(colors.accent);
-                        } else {
-                            item->setForeground(colors.tableText);
-                        }
+                        // Используем цвет для непротестированных из темы
+                        item->setForeground(colors.statusUntestedText);
                     }
                     // Стандартные цвета для первых 4 колонок (fallback)
                     else if (col < 4) {
@@ -964,13 +954,13 @@ void MainWindow::logSuccess(const QString& message) {
 
 void MainWindow::updateFaultInfo() {
     auto f = _mem->currentFault();
+    ThemeColors colors = ThemeManager::getColors(_currentTheme);
     if (f.model == FaultModel::None) {
         _faultInfoLabel->setText("Неисправность не внедрена");
-        if (_currentTheme == Theme::DeusEx) {
-            _faultInfoLabel->setStyleSheet("padding: 5px; background-color: #2d2d2d; border: 1px solid #d4af37; color: #e0e0e0;");
-        } else {
-            _faultInfoLabel->setStyleSheet("padding: 5px; background-color: #0a0a0a; border: 1px solid #00ff00; color: #00ff41;");
-        }
+        _faultInfoLabel->setStyleSheet(QString("padding: 5px; background-color: %1; border: 1px solid %2; color: %3;")
+                                       .arg(colors.bgSecondary.name())
+                                       .arg(colors.accent.name())
+                                       .arg(colors.text.name()));
     } else {
         QString info = QString("Тип: %1\nАдрес: %2\nДлина: %3 слов")
                        .arg(getFaultModelName(f.model))
@@ -980,11 +970,10 @@ void MainWindow::updateFaultInfo() {
             info += QString("\nВероятность инверсии: %1%").arg(f.flip_probability * 100, 0, 'f', 1);
         }
         _faultInfoLabel->setText(info);
-        if (_currentTheme == Theme::DeusEx) {
-            _faultInfoLabel->setStyleSheet("padding: 5px; background-color: #3d2d1a; border: 1px solid #d4af37; color: #e0e0e0;");
-        } else {
-            _faultInfoLabel->setStyleSheet("padding: 5px; background-color: #0a1a0a; border: 1px solid #00ff00; color: #00ff41;");
-        }
+        _faultInfoLabel->setStyleSheet(QString("padding: 5px; background-color: %1; border: 1px solid %2; color: %3;")
+                                       .arg(colors.faultyNotTestedBg.name())
+                                       .arg(colors.accent.name())
+                                       .arg(colors.text.name()));
     }
     updateStatistics();
 }
@@ -1064,13 +1053,13 @@ void MainWindow::updateProgressDetails(size_t addr, Word expected, Word read) {
                     }
                     
                     if (!isSpecialColor) {
-                        if (_currentTheme == Theme::DeusEx) {
-                            item->setBackground(QColor(70, 80, 100)); // Темно-синий для Deus Ex
-                            item->setForeground(colors.tableText);
+                        // Используем стандартные цвета таблицы из темы
+                        if (addr % 2 == 0) {
+                            item->setBackground(colors.tableBgEven);
                         } else {
-                            item->setBackground(QColor(0, 50, 50)); // Темно-зеленый/синий для Matrix
-                            item->setForeground(colors.tableText);
+                            item->setBackground(colors.tableBgOdd);
                         }
+                        item->setForeground(colors.tableText);
                     } else {
                         // ЛОГИРОВАНИЕ: Логируем, что сохраняем специальный цвет
                         logInfo(QString("updateProgressDetails: Адрес %1, колонка %2 - сохраняю специальный цвет %3")
@@ -1138,35 +1127,14 @@ void MainWindow::applyTheme(Theme theme) {
     updateFaultInfo();
     
     // Update test info label with theme-specific colors
-    auto f = _mem->currentFault();
-    if (f.model == FaultModel::None) {
-        if (theme == Theme::DeusEx) {
-            _faultInfoLabel->setStyleSheet("padding: 5px; background-color: #2d2d2d; border: 1px solid #d4af37; color: #e0e0e0;");
-        } else {
-            _faultInfoLabel->setStyleSheet("padding: 5px; background-color: #0a0a0a; border: 1px solid #00ff00; color: #00ff41;");
-        }
-    } else {
-        if (theme == Theme::DeusEx) {
-            _faultInfoLabel->setStyleSheet("padding: 5px; background-color: #3d2d1a; border: 1px solid #d4af37; color: #e0e0e0;");
-        } else {
-            _faultInfoLabel->setStyleSheet("padding: 5px; background-color: #0a1a0a; border: 1px solid #00ff00; color: #00ff41;");
-        }
-    }
-    
-    if (theme == Theme::DeusEx) {
-        _testInfoLabel->setStyleSheet("padding: 5px; background-color: #2d3d3d; border: 1px solid #d4af37; color: #e0e0e0;");
-    } else {
-        _testInfoLabel->setStyleSheet("padding: 5px; background-color: #0a1a0a; border: 1px solid #00ff00; color: #00ff41;");
-    }
+    ThemeColors colors = ThemeManager::getColors(theme);
+    _testInfoLabel->setStyleSheet(QString("padding: 5px; background-color: %1; border: 1px solid %2; color: %3;")
+                                  .arg(colors.bgSecondary.name())
+                                  .arg(colors.accent.name())
+                                  .arg(colors.text.name()));
     
     // Устанавливаем базовый цвет текста для журнала и перекрашиваем весь существующий текст
-    ThemeColors colors = ThemeManager::getColors(theme);
-    QColor logTextColor;
-    if (theme == Theme::DeusEx) {
-        logTextColor = colors.accent; // Золотистый для DeusEx
-    } else {
-        logTextColor = colors.text; // Зеленый для Matrix
-    }
+    QColor logTextColor = colors.logInfo;
     
     // Сохраняем весь текст из журнала
     QString logText = _log->toPlainText();
@@ -1210,5 +1178,9 @@ void MainWindow::onThemeChanged() {
         applyTheme(Theme::DeusEx);
     } else if (action == _matrixAction) {
         applyTheme(Theme::Matrix);
+    } else if (action == _gurrenLagannAction) {
+        applyTheme(Theme::GurrenLagann);
+    } else if (action == _cyberpunkAction) {
+        applyTheme(Theme::Cyberpunk);
     }
 }

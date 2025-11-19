@@ -6,7 +6,9 @@
 
 enum class Theme {
     DeusEx,
-    Matrix
+    Matrix,
+    GurrenLagann,
+    Cyberpunk
 };
 
 struct ThemeColors {

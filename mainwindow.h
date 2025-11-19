@@ -14,10 +14,13 @@
 #include <QTimer>
 #include <QTime>
 #include <QActionGroup>
+#include "types.h"
 #include "memorymodel.h"
 #include "testerworker.h"
 #include "thememanager.h"
 #include "tableitemdelegate.h"
+#include "logger.h"
+#include "dataformatter.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -42,15 +45,8 @@ private slots:
     void onThemeChanged();
 
 private:
-    void logInfo(const QString& message);
-    void logWarning(const QString& message);
-    void logError(const QString& message);
-    void logSuccess(const QString& message);
     void highlightCurrentAddress(size_t addr);
     void updateMemoryCellStatus(size_t addr);
-    QString formatBinary(Word value);
-    QString getFaultModelName(FaultModel model);
-    QString getAlgorithmDescription(TestAlgorithm algo);
     void applyTheme(Theme theme);
     QString getThemeStylesheet(Theme theme);
 
@@ -58,6 +54,7 @@ private:
     TesterWorker* _worker;
     QTimer* _testTimer;
     QTime _testStartTime;
+    Logger* _logger;
 
     // UI elements
     QGroupBox* _faultGroup;

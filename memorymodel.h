@@ -3,11 +3,10 @@
 
 #include <QObject>
 #include <vector>
-#include <cstdint>
+#include <memory>
 #include <QMutex>
+#include "types.h"
 #include "faultinjector.h"
-
-using Word = uint32_t;
 
 class MemoryModel : public QObject {
 Q_OBJECT
@@ -33,7 +32,7 @@ void faultInjected();
 private:
 mutable QMutex _mutex;
 std::vector<Word> _words;
-FaultInjector* _faultInjector;
+std::unique_ptr<FaultInjector> _faultInjector;
 };
 
 #endif // MEMORYMODEL_H

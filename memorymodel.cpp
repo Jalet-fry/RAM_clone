@@ -4,9 +4,7 @@
 MemoryModel::MemoryModel(size_t words, QObject* parent)
     : QObject(parent), _words(words, 0), _faultInjector(new FaultInjector()) {}
 
-MemoryModel::~MemoryModel() {
-    delete _faultInjector;
-}
+MemoryModel::~MemoryModel() = default;
 
 size_t MemoryModel::size() const {
     QMutexLocker locker(&_mutex);

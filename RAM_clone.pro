@@ -34,7 +34,9 @@ SOURCES += \
     testerworker.cpp \
     thememanager.cpp \
     tableitemdelegate.cpp \
-    faultinjector.cpp
+    faultinjector.cpp \
+    logger.cpp \
+    dataformatter.cpp
 
 # Header files
 HEADERS += \
@@ -44,7 +46,11 @@ HEADERS += \
     testerworker.h \
     thememanager.h \
     tableitemdelegate.h \
-    faultinjector.h
+    faultinjector.h \
+    types.h \
+    logger.h \
+    dataformatter.h \
+    constants.h
 
 # UI files
 FORMS += \

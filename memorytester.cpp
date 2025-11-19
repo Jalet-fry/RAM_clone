@@ -1,4 +1,5 @@
 #include "memorytester.h"
+#include "constants.h"
 #include <QThread>
 #include <cmath>
 
@@ -15,12 +16,12 @@ void MemoryTester::runTest(TestAlgorithm algo) {
         for (size_t a = 0; a < n; ++a) {
             Word pattern = (1u << (a % 32));
             _mem->writeDirect(a, pattern); // Гарантированная запись без искажений
-            // Обновляем прогресс реже для производительности (каждые 10 адресов или в конце)
-            if (a % 10 == 0 || a == n - 1) {
-                int percent = int((a * 50.0) / n);
+            // Обновляем прогресс реже для производительности
+            if (a % PROGRESS_UPDATE_INTERVAL == 0 || a == n - 1) {
+                int percent = int((a * PROGRESS_PHASE_PERCENT) / n);
                 emit progress(percent);
-                // Добавляем небольшую задержку для визуализации (около 3 секунд на весь тест)
-                QThread::msleep(60);
+                // Добавляем небольшую задержку для визуализации
+                QThread::msleep(VISUALIZATION_DELAY_MS);
             }
         }
         
@@ -31,12 +32,12 @@ void MemoryTester::runTest(TestAlgorithm algo) {
             bool pass = (expected == r);
             _results.push_back({a, expected, r, pass});
             // Обновляем прогресс и детали реже для производительности
-            if (a % 10 == 0 || a == n - 1) {
-                int percent = 50 + int(((a + 1) * 50.0) / n);
+            if (a % PROGRESS_UPDATE_INTERVAL == 0 || a == n - 1) {
+                int percent = int(PROGRESS_PHASE_PERCENT) + int(((a + 1) * PROGRESS_PHASE_PERCENT) / n);
                 emit progress(percent);
                 emit progressDetail(a, expected, r);
                 // Добавляем небольшую задержку для визуализации
-                QThread::msleep(60);
+                QThread::msleep(VISUALIZATION_DELAY_MS);
             }
         }
         emit progress(100); // Гарантируем 100% в конце
@@ -47,11 +48,11 @@ void MemoryTester::runTest(TestAlgorithm algo) {
             Word pattern = ~(1u << (a % 32));
             _mem->writeDirect(a, pattern);
             // Обновляем прогресс реже для производительности
-            if (a % 10 == 0 || a == n - 1) {
-                int percent = int((a * 50.0) / n);
+            if (a % PROGRESS_UPDATE_INTERVAL == 0 || a == n - 1) {
+                int percent = int((a * PROGRESS_PHASE_PERCENT) / n);
                 emit progress(percent);
                 // Добавляем небольшую задержку для визуализации
-                QThread::msleep(60);
+                QThread::msleep(VISUALIZATION_DELAY_MS);
             }
         }
         
@@ -62,12 +63,12 @@ void MemoryTester::runTest(TestAlgorithm algo) {
             bool pass = (expected == r);
             _results.push_back({a, expected, r, pass});
             // Обновляем прогресс и детали реже для производительности
-            if (a % 10 == 0 || a == n - 1) {
-                int percent = 50 + int(((a + 1) * 50.0) / n);
+            if (a % PROGRESS_UPDATE_INTERVAL == 0 || a == n - 1) {
+                int percent = int(PROGRESS_PHASE_PERCENT) + int(((a + 1) * PROGRESS_PHASE_PERCENT) / n);
                 emit progress(percent);
                 emit progressDetail(a, expected, r);
                 // Добавляем небольшую задержку для визуализации
-                QThread::msleep(60);
+                QThread::msleep(VISUALIZATION_DELAY_MS);
             }
         }
         emit progress(100); // Гарантируем 100% в конце
@@ -78,10 +79,10 @@ void MemoryTester::runTest(TestAlgorithm algo) {
         // Шаг 1: Запись всех 0
         for (size_t a = 0; a < n; ++a) {
             _mem->writeDirect(a, 0u);
-            if (a % 10 == 0 || a == n - 1) {
-                emit progress(int((a * 25.0) / n));
+            if (a % PROGRESS_UPDATE_INTERVAL == 0 || a == n - 1) {
+                emit progress(int((a * PROGRESS_MARCH_PERCENT) / n));
                 // Добавляем небольшую задержку для визуализации
-                QThread::msleep(60);
+                QThread::msleep(VISUALIZATION_DELAY_MS);
             }
         }
         
@@ -90,21 +91,21 @@ void MemoryTester::runTest(TestAlgorithm algo) {
             Word r = _mem->read(a);
             bool pass = (r == 0u);
             _results.push_back({a, 0u, r, pass});
-            if (a % 10 == 0 || a == n - 1) {
-                emit progress(25 + int(((a + 1) * 25.0) / n));
+            if (a % PROGRESS_UPDATE_INTERVAL == 0 || a == n - 1) {
+                emit progress(int(PROGRESS_MARCH_PERCENT) + int(((a + 1) * PROGRESS_MARCH_PERCENT) / n));
                 emit progressDetail(a, 0u, r);
                 // Добавляем небольшую задержку для визуализации
-                QThread::msleep(60);
+                QThread::msleep(VISUALIZATION_DELAY_MS);
             }
         }
         
         // Шаг 3: Запись всех 1
         for (size_t a = 0; a < n; ++a) {
             _mem->writeDirect(a, ~0u);
-            if (a % 10 == 0 || a == n - 1) {
-                emit progress(50 + int((a * 25.0) / n));
+            if (a % PROGRESS_UPDATE_INTERVAL == 0 || a == n - 1) {
+                emit progress(int(PROGRESS_MARCH_PERCENT * 2) + int((a * PROGRESS_MARCH_PERCENT) / n));
                 // Добавляем небольшую задержку для визуализации
-                QThread::msleep(60);
+                QThread::msleep(VISUALIZATION_DELAY_MS);
             }
         }
         
@@ -113,11 +114,11 @@ void MemoryTester::runTest(TestAlgorithm algo) {
             Word r = _mem->read(a);
             bool pass = (r == ~0u);
             _results.push_back({a, ~0u, r, pass});
-            if (a % 10 == 0 || a == n - 1) {
-                emit progress(75 + int(((a + 1) * 25.0) / n));
+            if (a % PROGRESS_UPDATE_INTERVAL == 0 || a == n - 1) {
+                emit progress(int(PROGRESS_MARCH_PERCENT * 3) + int(((a + 1) * PROGRESS_MARCH_PERCENT) / n));
                 emit progressDetail(a, ~0u, r);
                 // Добавляем небольшую задержку для визуализации
-                QThread::msleep(60);
+                QThread::msleep(VISUALIZATION_DELAY_MS);
             }
         }
         emit progress(100); // Гарантируем 100% в конце

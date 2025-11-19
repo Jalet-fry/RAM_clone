@@ -215,6 +215,9 @@ MainWindow::MainWindow(QWidget* parent)
     _log->setReadOnly(true);
     _log->setFont(QFont("Courier", 9));
     logLayout->addWidget(_log);
+    
+    // Initialize logger
+    _logger = new Logger(_log, _currentTheme);
 
     bottomSplitter->addWidget(logWidget);
     bottomSplitter->setStretchFactor(0, 3);
@@ -314,7 +317,7 @@ MainWindow::MainWindow(QWidget* parent)
     _currentTheme = Theme::DeusEx;
     applyTheme(Theme::DeusEx);
     
-    logInfo("Программа запущена. Готов к работе.");
+    _logger->info("Программа запущена. Готов к работе.");
 }
 
 MainWindow::~MainWindow() {
@@ -332,20 +335,20 @@ void MainWindow::onInject() {
     size_t len = _lenEdit->text().toULongLong(&ok2);
 
     if (!ok1 || !ok2) {
-        logError("Ошибка ввода: Адрес и длина должны быть числами.");
+        _logger->error("Ошибка ввода: Адрес и длина должны быть числами.");
         QMessageBox::warning(this, "Ошибка ввода", "Адрес и длина должны быть числами.");
         return;
     }
 
     if (addr >= _mem->size()) {
-        logError(QString("Ошибка: Адрес %1 выходит за пределы памяти (0-%2)").arg(addr).arg(_mem->size() - 1));
+        _logger->error(QString("Ошибка: Адрес %1 выходит за пределы памяти (0-%2)").arg(addr).arg(_mem->size() - 1));
         QMessageBox::warning(this, "Ошибка", QString("Адрес должен быть в диапазоне 0-%1").arg(_mem->size() - 1));
         return;
     }
 
     if (addr + len > _mem->size()) {
         len = _mem->size() - addr;
-        logWarning(QString("Длина уменьшена до %1 (выход за пределы памяти)").arg(len));
+        _logger->warning(QString("Длина уменьшена до %1 (выход за пределы памяти)").arg(len));
     }
 
     f.addr = addr;
@@ -353,8 +356,8 @@ void MainWindow::onInject() {
     f.flip_probability = _flipProbSpin->value();
 
     _mem->injectFault(f);
-    logSuccess(QString("Внедрена неисправность: %1 по адресу %2, длина=%3")
-               .arg(getFaultModelName(f.model)).arg(addr).arg(f.len));
+    _logger->success(QString("Внедрена неисправность: %1 по адресу %2, длина=%3")
+               .arg(DataFormatter::getFaultModelName(f.model)).arg(addr).arg(f.len));
     updateFaultInfo();
     updateStatistics();
 }
@@ -368,7 +371,7 @@ void MainWindow::onReset() {
     _currentAddrLabel->setText("Адрес: —");
     _expectedValueLabel->setText("Ожидается: —");
     _readValueLabel->setText("Прочитано: —");
-    logInfo("Память сброшена. Все данные очищены, неисправности удалены.");
+    _logger->info("Память сброшена. Все данные очищены, неисправности удалены.");
     updateFaultInfo();
     updateStatistics();
     refreshTable(0, _mem->size());
@@ -376,7 +379,7 @@ void MainWindow::onReset() {
 
 void MainWindow::onStartTest() {
     if (_testRunning) {
-        logWarning("Тест уже выполняется. Дождитесь завершения.");
+        _logger->warning("Тест уже выполняется. Дождитесь завершения.");
         return;
     }
 
@@ -396,7 +399,7 @@ void MainWindow::onStartTest() {
     // Таблица будет обновлена только в конце теста
     disconnect(_mem, &MemoryModel::dataChanged, this, &MainWindow::refreshTable);
 
-    logInfo(QString("Запуск теста: %1").arg(_algoCombo->currentText()));
+    _logger->info(QString("Запуск теста: %1").arg(_algoCombo->currentText()));
     updateTestInfo();
 
     QMetaObject::invokeMethod(_worker, "run", Qt::QueuedConnection, Q_ARG(TestAlgorithm, algo));
@@ -418,10 +421,10 @@ void MainWindow::onTestFinished(const std::vector<TestResult>& results) {
     QString timeStr = QString("%1.%2 сек").arg(elapsed / 1000).arg((elapsed % 1000) / 100, 2, 10, QChar('0'));
 
     if (fails == 0) {
-        logSuccess(QString("Тест завершен успешно. Всего проверок: %1, неисправностей не обнаружено. Время: %2")
+        _logger->success(QString("Тест завершен успешно. Всего проверок: %1, неисправностей не обнаружено. Время: %2")
                    .arg(results.size()).arg(timeStr));
     } else {
-        logError(QString("Тест завершен. Всего проверок: %1, обнаружено неисправностей: %2. Время: %3")
+        _logger->error(QString("Тест завершен. Всего проверок: %1, обнаружено неисправностей: %2. Время: %3")
                  .arg(results.size()).arg(fails).arg(timeStr));
     }
 
@@ -458,9 +461,9 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
             failedAddressesForLog.insert(r.addr);
         }
     }
-    logInfo(QString("refreshTable: Всего результатов: %1, неисправных адресов: %2")
+    _logger->info(QString("refreshTable: Всего результатов: %1, неисправных адресов: %2")
             .arg(_lastResults.size()).arg(failedAddressesForLog.size()));
-    logInfo(QString("refreshTable: Цвета для красного выделения - фон: %1, текст: %2")
+    _logger->info(QString("refreshTable: Цвета для красного выделения - фон: %1, текст: %2")
             .arg(colors.failedTestBg.name()).arg(colors.failedTestText.name()));
 
     for (size_t i = 0; i < n; ++i) {
@@ -495,7 +498,7 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
             binItem = new QTableWidgetItem;
             _table->setItem(int(i), 2, binItem);
         }
-        binItem->setText(formatBinary(v));
+        binItem->setText(DataFormatter::formatBinary(v));
         binItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
         binItem->setFont(QFont("Courier", 9));
         binItem->setForeground(colors.tableText);
@@ -571,7 +574,7 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
         faultTypeItem->setToolTip("");
         
         if (isFaulty) {
-            faultTypeItem->setText(getFaultModelName(f.model));
+            faultTypeItem->setText(DataFormatter::getFaultModelName(f.model));
             faultTypeItem->setForeground(colors.faultyNotTestedText);
         } else if (isTested) {
             // Check if fault was detected
@@ -659,7 +662,7 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
         // ВАЖНО: Это должно быть ПОСЛЕ основного цикла, чтобы перезаписать любые другие цвета
         if (hasFailedTest) {
             // ЛОГИРОВАНИЕ: Логируем применение красного выделения
-            logInfo(QString("refreshTable: Адрес %1 - hasFailedTest=true, применяю красное выделение (фон: %2, текст: %3)")
+            _logger->info(QString("refreshTable: Адрес %1 - hasFailedTest=true, применяю красное выделение (фон: %2, текст: %3)")
                     .arg(i).arg(colors.failedTestBg.name()).arg(colors.failedTestText.name()));
             
             // Применяем красное выделение ко всем колонкам строки (кроме статуса)
@@ -686,7 +689,7 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
             }
         } else if (failedAddressesForLog.count(i) > 0) {
             // ЛОГИРОВАНИЕ: Если адрес в списке неисправных, но hasFailedTest=false - это ошибка!
-            logError(QString("refreshTable: ОШИБКА! Адрес %1 в списке неисправных, но hasFailedTest=false!")
+            _logger->error(QString("refreshTable: ОШИБКА! Адрес %1 в списке неисправных, но hasFailedTest=false!")
                     .arg(i));
         }
     }
@@ -702,7 +705,7 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
     }
     
     // Теперь применяем красное выделение ко всем неисправным адресам
-    logInfo(QString("refreshTable: Второй проход - применяю красное выделение к %1 адресам")
+    _logger->info(QString("refreshTable: Второй проход - применяю красное выделение к %1 адресам")
             .arg(failedAddresses.size()));
     for (size_t addr : failedAddresses) {
         if (addr >= n) continue; // Проверка границ
@@ -748,7 +751,7 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
                 QColor expectedBg = colors.failedTestBg;
                 if (actualBg.rgb() != expectedBg.rgb()) {
                     allCorrect = false;
-                    logError(QString("refreshTable: НЕСООТВЕТСТВИЕ! Адрес %1, колонка %2 - ожидался фон %3, фактический %4")
+                    _logger->error(QString("refreshTable: НЕСООТВЕТСТВИЕ! Адрес %1, колонка %2 - ожидался фон %3, фактический %4")
                             .arg(addr).arg(col).arg(expectedBg.name()).arg(actualBg.name()));
                     mismatchCount++;
                 }
@@ -758,7 +761,7 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
             verifiedCount++;
         }
     }
-    logInfo(QString("refreshTable: Проверка завершена - правильно окрашено: %1, несоответствий: %2")
+    _logger->info(QString("refreshTable: Проверка завершена - правильно окрашено: %1, несоответствий: %2")
             .arg(verifiedCount).arg(mismatchCount));
     
     // Оптимизация: resizeColumnsToContents очень медленный, вызываем только при необходимости
@@ -767,13 +770,13 @@ void MainWindow::refreshTable(size_t begin, size_t end) {
 }
 
 void MainWindow::clearLog() {
-    _log->clear();
-    logInfo("Журнал очищен.");
+    _logger->clear();
+    _logger->info("Журнал очищен.");
 }
 
 void MainWindow::exportResults() {
     if (_lastResults.empty()) {
-        logWarning("Нет результатов для экспорта. Сначала запустите тест.");
+        _logger->warning("Нет результатов для экспорта. Сначала запустите тест.");
         QMessageBox::information(this, "Экспорт", "Нет результатов для экспорта. Сначала запустите тест.");
         return;
     }
@@ -783,7 +786,7 @@ void MainWindow::exportResults() {
 
     QFile file(fileName);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        logError(QString("Не удалось открыть файл для записи: %1").arg(fileName));
+        _logger->error(QString("Не удалось открыть файл для записи: %1").arg(fileName));
         return;
     }
 
@@ -802,13 +805,13 @@ void MainWindow::exportResults() {
     }
 
     file.close();
-    logSuccess(QString("Результаты экспортированы в файл: %1").arg(fileName));
+    _logger->success(QString("Результаты экспортированы в файл: %1").arg(fileName));
 }
 
 void MainWindow::scrollToNextFault() {
     // Проверяем, были ли запущены тесты
     if (_lastResults.empty()) {
-        logWarning("Тесты еще не запускались. Сначала запустите тест памяти.");
+        _logger->warning("Тесты еще не запускались. Сначала запустите тест памяти.");
         QMessageBox::information(this, "Тесты не запущены", 
                                 "Тесты еще не запускались.\nСначала запустите тест памяти.");
         return;
@@ -825,7 +828,7 @@ void MainWindow::scrollToNextFault() {
     
     // Если неисправностей нет
     if (faultAddresses.empty()) {
-        logWarning("Неисправности не найдены тестами. Все проверки прошли успешно.");
+        _logger->warning("Неисправности не найдены тестами. Все проверки прошли успешно.");
         QMessageBox::information(this, "Неисправности не найдены", 
                                 "Тестами не обнаружено неисправностей.\nВсе проверки прошли успешно.");
         return;
@@ -871,7 +874,7 @@ void MainWindow::scrollToNextFault() {
     }
     
     if (!found) {
-        logWarning("Не удалось найти следующую неисправность.");
+        _logger->warning("Не удалось найти следующую неисправность.");
         return;
     }
     
@@ -885,7 +888,7 @@ void MainWindow::scrollToNextFault() {
     }
     
     if (!isActuallyFaulty) {
-        logWarning(QString("Адрес %1 больше не является неисправным. Обновляю таблицу...").arg(nextAddr));
+        _logger->warning(QString("Адрес %1 больше не является неисправным. Обновляю таблицу...").arg(nextAddr));
         refreshTable(0, _mem->size());
         // Пытаемся найти следующую неисправность снова
         return scrollToNextFault();
@@ -897,7 +900,7 @@ void MainWindow::scrollToNextFault() {
         _table->setCurrentCell(row, 0);
         _table->scrollTo(_table->model()->index(row, 0), QAbstractItemView::EnsureVisible);
         _table->selectRow(row);
-        logInfo(QString("Переход к следующей неисправности по адресу: %1").arg(nextAddr));
+        _logger->info(QString("Переход к следующей неисправности по адресу: %1").arg(nextAddr));
     }
 }
 
@@ -923,36 +926,9 @@ void MainWindow::updateStatistics() {
     _coverageLabel->setText(QString("Покрытие: %1%").arg(coverage, 0, 'f', 1));
 
     auto f = _mem->currentFault();
-    _currentFaultModelLabel->setText(QString("Текущая модель: %1").arg(getFaultModelName(f.model)));
+    _currentFaultModelLabel->setText(QString("Текущая модель: %1").arg(DataFormatter::getFaultModelName(f.model)));
 }
 
-void MainWindow::logInfo(const QString& message) {
-    QString timestamp = QTime::currentTime().toString("hh:mm:ss");
-    ThemeColors colors = ThemeManager::getColors(_currentTheme);
-    _log->setTextColor(colors.logInfo);
-    _log->append(QString("[%1] INFO: %2").arg(timestamp).arg(message));
-}
-
-void MainWindow::logWarning(const QString& message) {
-    QString timestamp = QTime::currentTime().toString("hh:mm:ss");
-    ThemeColors colors = ThemeManager::getColors(_currentTheme);
-    _log->setTextColor(colors.logWarning);
-    _log->append(QString("[%1] WARNING: %2").arg(timestamp).arg(message));
-}
-
-void MainWindow::logError(const QString& message) {
-    QString timestamp = QTime::currentTime().toString("hh:mm:ss");
-    ThemeColors colors = ThemeManager::getColors(_currentTheme);
-    _log->setTextColor(colors.logError);
-    _log->append(QString("[%1] ERROR: %2").arg(timestamp).arg(message));
-}
-
-void MainWindow::logSuccess(const QString& message) {
-    QString timestamp = QTime::currentTime().toString("hh:mm:ss");
-    ThemeColors colors = ThemeManager::getColors(_currentTheme);
-    _log->setTextColor(colors.logSuccess);
-    _log->append(QString("[%1] SUCCESS: %2").arg(timestamp).arg(message));
-}
 
 void MainWindow::updateFaultInfo() {
     auto f = _mem->currentFault();
@@ -965,7 +941,7 @@ void MainWindow::updateFaultInfo() {
                                        .arg(colors.text.name()));
     } else {
         QString info = QString("Тип: %1\nАдрес: %2\nДлина: %3 слов")
-                       .arg(getFaultModelName(f.model))
+                       .arg(DataFormatter::getFaultModelName(f.model))
                        .arg(f.addr)
                        .arg(f.len);
         if (f.model == FaultModel::BitFlip) {
@@ -982,7 +958,7 @@ void MainWindow::updateFaultInfo() {
 
 void MainWindow::updateTestInfo() {
     TestAlgorithm algo = static_cast<TestAlgorithm>(_algoCombo->currentData().toInt());
-    QString desc = getAlgorithmDescription(algo);
+    QString desc = DataFormatter::getAlgorithmDescription(algo);
     _testInfoLabel->setText(QString("Алгоритм: %1\n\n%2").arg(_algoCombo->currentText()).arg(desc));
 }
 
@@ -1049,7 +1025,7 @@ void MainWindow::updateProgressDetails(size_t addr, Word expected, Word read) {
                             }
                         }
                         if (isFailedAddr) {
-                            logWarning(QString("updateProgressDetails: ПЕРЕЗАПИСЬ! Адрес %1, колонка %2 - текущий фон %3, но адрес неисправен!")
+                            _logger->warning(QString("updateProgressDetails: ПЕРЕЗАПИСЬ! Адрес %1, колонка %2 - текущий фон %3, но адрес неисправен!")
                                     .arg(addr).arg(col).arg(currentBg.name()));
                         }
                     }
@@ -1064,7 +1040,7 @@ void MainWindow::updateProgressDetails(size_t addr, Word expected, Word read) {
                         item->setForeground(colors.tableText);
                     } else {
                         // ЛОГИРОВАНИЕ: Логируем, что сохраняем специальный цвет
-                        logInfo(QString("updateProgressDetails: Адрес %1, колонка %2 - сохраняю специальный цвет %3")
+                        _logger->info(QString("updateProgressDetails: Адрес %1, колонка %2 - сохраняю специальный цвет %3")
                                 .arg(addr).arg(col).arg(currentBg.name()));
                     }
                 }
@@ -1079,41 +1055,6 @@ void MainWindow::updateProgressDetails(size_t addr, Word expected, Word read) {
     }
 }
 
-QString MainWindow::formatBinary(Word value) {
-    QString binary;
-    for (int i = 31; i >= 0; --i) {
-        binary += (value & (1u << i)) ? '1' : '0';
-        if (i % 4 == 0 && i > 0) binary += ' ';
-    }
-    return binary;
-}
-
-QString MainWindow::getFaultModelName(FaultModel model) {
-    switch (model) {
-        case FaultModel::None: return "Нет";
-        case FaultModel::StuckAt0: return "Stuck-at-0";
-        case FaultModel::StuckAt1: return "Stuck-at-1";
-        case FaultModel::BitFlip: return "Bit-flip";
-        case FaultModel::OpenRead: return "Open (invalid read)";
-        default: return "Неизвестно";
-    }
-}
-
-QString MainWindow::getAlgorithmDescription(TestAlgorithm algo) {
-    switch (algo) {
-        case TestAlgorithm::WalkingOnes:
-            return "Записывает единицу в каждый бит позиции и проверяет, что она сохраняется. "
-                   "Обнаруживает залипания битов и ошибки чтения/записи.";
-        case TestAlgorithm::WalkingZeros:
-            return "Записывает ноль в каждый бит позиции и проверяет, что он сохраняется. "
-                   "Обнаруживает залипания битов и ошибки чтения/записи.";
-        case TestAlgorithm::MarchSimple:
-            return "Простой маршевый тест: записывает все нули, проверяет нули, "
-                   "записывает все единицы, проверяет единицы. Обнаруживает основные неисправности памяти.";
-        default:
-            return "Описание недоступно";
-    }
-}
 
 QString MainWindow::getThemeStylesheet(Theme theme) {
     return ThemeManager::getStylesheet(theme);
@@ -1121,6 +1062,11 @@ QString MainWindow::getThemeStylesheet(Theme theme) {
 
 void MainWindow::applyTheme(Theme theme) {
     _currentTheme = theme;
+    
+    // Update logger theme
+    if (_logger) {
+        _logger->setTheme(theme);
+    }
     
     // Apply stylesheet to main window
     setStyleSheet(getThemeStylesheet(theme));

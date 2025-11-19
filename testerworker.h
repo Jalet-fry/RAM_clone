@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QThread>
+#include "types.h"
 #include "memorytester.h"
 
 class TesterWorker : public QObject {

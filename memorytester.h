@@ -1,25 +1,10 @@
 #ifndef MEMORYTESTER_H
 #define MEMORYTESTER_H
 
-
 #include <QObject>
 #include <vector>
+#include "types.h"
 #include "memorymodel.h"
-
-
-enum class TestAlgorithm {
-WalkingOnes,
-WalkingZeros,
-MarchSimple
-};
-
-
-struct TestResult {
-size_t addr;
-Word expected;
-Word read;
-bool passed;
-};
 
 
 class MemoryTester : public QObject {
